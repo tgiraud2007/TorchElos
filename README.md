@@ -5,6 +5,14 @@
 
 ---
 
+> [!IMPORTANT]
+> **🧪 PUBLIC BETA — ROOT ACCESS REQUIRED**
+> * **TorchElos is currently in public Beta.**
+> * **ROOT ACCESS IS MANDATORY:** You must have **KernelSU**, **Magisk**, or **APatch** installed. Without Root permissions, Android prevents apps from directly controlling the PMIC kernel sysfs registers.
+> * Engineered specifically for **POCO F5 (`marble`)** and **Redmi Note 12 Turbo** on Android 13 to 16+.
+
+---
+
 ## ⚠️ Disclaimer & Hardware Warning
 
 > [!CAUTION]
