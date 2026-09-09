@@ -45,12 +45,12 @@ class TorchTileService : TileService() {
         val tile = qsTile ?: return
 
         tile.state = if (isOn) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.label = "Lampe"
+        tile.label = "Torch"
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val pct = (level * 100) / maxLevel
             val desc = when {
-                level <= 2 -> "Veilleuse ($level/500)"
+                level <= 2 -> "Nightlight ($level/500)"
                 level >= maxLevel -> "Max (500/500)"
                 else -> "$level / $maxLevel ($pct%)"
             }

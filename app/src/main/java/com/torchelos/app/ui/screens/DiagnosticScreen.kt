@@ -44,7 +44,7 @@ fun DiagnosticScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Diagnostic Matériel",
+                        text = "Hardware Diagnostics",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = OnDarkTextPrimary
@@ -54,7 +54,7 @@ fun DiagnosticScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour",
+                            contentDescription = "Back",
                             tint = OnDarkTextPrimary
                         )
                     }
@@ -73,12 +73,12 @@ fun DiagnosticScreen(
                 .padding(20.dp)
         ) {
             // Carte État Système & Root
-            InfoCard(title = "Environnement Système") {
-                InfoRow("Appareil", "Xiaomi POCO F5 (marble)")
+            InfoCard(title = "System Environment") {
+                InfoRow("Device", "Xiaomi POCO F5 (marble)")
                 InfoRow("OS", "LineageOS 23.2 (Android 16)")
                 InfoRow(
-                    "KernelSU Next",
-                    if (state.isRootAvailable) "Opérationnel (uid=0)" else "Non détecté",
+                    "Root Access",
+                    if (state.isRootAvailable) "Operational (uid=0)" else "Not detected",
                     isSuccess = state.isRootAvailable
                 )
             }
@@ -86,26 +86,26 @@ fun DiagnosticScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Carte Camera HAL vs Matériel
-            InfoCard(title = "Analyse Matérielle") {
-                InfoRow("Camera2 HAL", "strengthMaximumLevel = 1 (Pas de slider ROM)", isWarning = true)
-                InfoRow("Contrôleur PMIC", "Qualcomm PM8350C (leds-qti-flash)")
-                InfoRow("Nœuds Torche", "led:torch_0 (500) + led:torch_3 (500)")
-                InfoRow("Interrupteur Switch", "led:switch_0 (Canal masque 0x09)")
-                InfoRow("Plage disponible", "1 à 500 paliers continus")
-                InfoRow("Niveau LineageOS de base", "65 (13% de la puissance max)")
+            InfoCard(title = "Hardware Analysis") {
+                InfoRow("Camera2 HAL", "strengthMaximumLevel = 1 (No ROM slider)", isWarning = true)
+                InfoRow("PMIC Controller", "Qualcomm PM8350C (leds-qti-flash)")
+                InfoRow("Torch Nodes", "led:torch_0 (500) + led:torch_3 (500)")
+                InfoRow("Switch Node", "led:switch_0 (Channel mask 0x09)")
+                InfoRow("Available Range", "1 to 500 continuous steps")
+                InfoRow("Stock LineageOS Level", "65 (13% max power)")
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Section Banc de Test Physique
             Text(
-                text = "Banc d'essai de puissance physique",
+                text = "Hardware Power Testbench",
                 color = OnDarkTextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Vérifiez sous vos yeux que la LED flash change physiquement d'intensité :",
+                text = "Visually verify that the physical flash LED changes intensity:",
                 color = OnDarkTextSecondary,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
@@ -118,11 +118,11 @@ fun DiagnosticScreen(
                         coroutineScope.launch {
                             isRunningAutoTest = true
                             val testSteps = listOf(
-                                25 to "Niveau 25 (5% - Veilleuse douce)",
-                                75 to "Niveau 75 (15% - Éco)",
-                                150 to "Niveau 150 (30% - Modéré)",
-                                300 to "Niveau 300 (60% - Fort)",
-                                500 to "Niveau 500 (100% - Plein phare !)"
+                                25 to "Level 25 (5% - Dim nightlight)",
+                                75 to "Level 75 (15% - Eco)",
+                                150 to "Level 150 (30% - Moderate)",
+                                300 to "Level 300 (60% - Bright)",
+                                500 to "Level 500 (100% - Full Turbo!)"
                             )
 
                             for ((level, desc) in testSteps) {
@@ -131,7 +131,7 @@ fun DiagnosticScreen(
                                 delay(2000)
                             }
 
-                            autoTestStatus = "Test terminé - Extinction"
+                            autoTestStatus = "Test finished - Powering off"
                             torchManager.turnOff()
                             delay(1000)
                             autoTestStatus = ""
@@ -151,7 +151,7 @@ fun DiagnosticScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isRunningAutoTest) "Test en cours..." else "Lancer le test de gradation séquentiel",
+                    text = if (isRunningAutoTest) "Testing in progress..." else "Run sequential brightness test",
                     color = Color.Black,
                     fontWeight = FontWeight.Bold
                 )
@@ -171,7 +171,7 @@ fun DiagnosticScreen(
 
             // Paliers de test individuels
             Text(
-                text = "Paliers manuels instantanés :",
+                text = "Instant manual steps:",
                 color = OnDarkTextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
@@ -209,7 +209,7 @@ fun DiagnosticScreen(
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Éteindre la torche", color = OnDarkTextPrimary)
+                Text("Turn off flashlight", color = OnDarkTextPrimary)
             }
         }
     }

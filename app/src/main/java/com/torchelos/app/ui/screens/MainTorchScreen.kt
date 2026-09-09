@@ -71,7 +71,7 @@ fun MainTorchScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Build,
-                        contentDescription = "Diagnostic Matériel",
+                        contentDescription = "Hardware Diagnostics",
                         tint = OnDarkTextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -105,7 +105,7 @@ fun MainTorchScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (state.isRootAvailable) "POCO F5 (PM8350C) • KernelSU Next" else "Mode Caméra standard",
+                    text = if (state.isRootAvailable) "POCO F5 (PM8350C) • Root Active" else "Standard Camera Mode",
                     color = OnDarkTextSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium

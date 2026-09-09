@@ -119,7 +119,7 @@ fun PowerButton(
         ) {
             Icon(
                 imageVector = Icons.Default.PowerSettingsNew,
-                contentDescription = if (isOn) "Éteindre la torche" else "Allumer la torche",
+                contentDescription = if (isOn) "Turn off flashlight" else "Turn on flashlight",
                 tint = iconColor.value,
                 modifier = Modifier.size(64.dp)
             )

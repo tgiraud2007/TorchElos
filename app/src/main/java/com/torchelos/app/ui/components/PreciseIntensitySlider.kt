@@ -60,7 +60,7 @@ fun PreciseIntensitySlider(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Puissance du flash",
+                    text = "Flash Intensity",
                     color = OnDarkTextSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
@@ -91,7 +91,7 @@ fun PreciseIntensitySlider(
                     )
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Éditer la valeur",
+                        contentDescription = "Edit value",
                         tint = OnDarkTextSecondary,
                         modifier = Modifier
                             .padding(start = 6.dp)
@@ -158,12 +158,12 @@ fun PreciseIntensitySlider(
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
             title = {
-                Text("Entrer une valeur exacte", color = OnDarkTextPrimary)
+                Text("Enter Exact Value", color = OnDarkTextPrimary)
             },
             text = {
                 Column {
                     Text(
-                        "Saisissez une valeur entre $minLevel et $maxLevel :",
+                        "Enter a value between $minLevel and $maxLevel:",
                         color = OnDarkTextSecondary,
                         fontSize = 14.sp
                     )
@@ -192,12 +192,12 @@ fun PreciseIntensitySlider(
                         showEditDialog = false
                     }
                 ) {
-                    Text("Appliquer", color = TorchAmber, fontWeight = FontWeight.Bold)
+                    Text("Apply", color = TorchAmber, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("Annuler", color = OnDarkTextSecondary)
+                    Text("Cancel", color = OnDarkTextSecondary)
                 }
             },
             containerColor = DarkSurface
