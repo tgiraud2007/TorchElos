@@ -84,7 +84,7 @@ TorchElos bypasses the restricted Camera HAL and speaks directly to the Qualcomm
 | **Target Device** | **POCO F5 (`marble`)** / **Redmi Note 12 Turbo** |
 | **Processor** | Qualcomm Snapdragon 7+ Gen 2 (SM7475) |
 | **Android Version** | **Android 13, 14, 15, 16+** (API 33 - 36) |
-| **ROM Support** | LineageOS, crDroid, PixelOS, AOSP, HyperOS / MIUI (rooted) |
+| **ROM Support** | LineageOS, crDroid, PixelOS, and other AOSP-based custom ROMs |
 | **Root Solution** | **KernelSU**, **Magisk**, or **APatch** (Required) |
 
 ---
