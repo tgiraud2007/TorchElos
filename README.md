@@ -1,7 +1,20 @@
 # 🔦 TorchElos
 
-**Advanced Hardware-Level Flashlight Intensity Controller for POCO F5 (`marble`)**  
-*Full 1 to 500 intensity control, zero-flash nightlight ignition, and bidirectional LineageOS Quick Settings synchronization.*
+<p align="center">
+  <a href="https://github.com/tgiraud2007/TorchElos/releases/latest"><img src="https://img.shields.io/github/v/release/tgiraud2007/TorchElos?style=for-the-badge&color=FFA726" alt="Latest Release" /></a>
+  <a href="https://android.com"><img src="https://img.shields.io/badge/Android-13%20to%2016%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android Version" /></a>
+  <a href="https://github.com/tgiraud2007/TorchElos"><img src="https://img.shields.io/badge/Device-POCO%20F5%20(marble)-007ACC?style=for-the-badge" alt="Target Device" /></a>
+  <a href="https://kernelsu.org"><img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20Magisk%20%7C%20APatch-E53935?style=for-the-badge" alt="Root Solution" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License" /></a>
+</p>
+
+<h3 align="center">
+  <b>Advanced Hardware-Level Flashlight Intensity Controller for POCO F5 (<code>marble</code>)</b>
+</h3>
+
+<p align="center">
+  <i>Full 1 to 500 Linear Intensity Range, Zero-Flash Stealth Nightlight Startup, and Bidirectional LineageOS Quick Settings Synchronization.</i>
+</p>
 
 ---
 
@@ -9,7 +22,7 @@
 > **🧪 PUBLIC BETA — ROOT ACCESS REQUIRED**
 > * **TorchElos is currently in public Beta.**
 > * **ROOT ACCESS IS MANDATORY:** You must have **KernelSU**, **Magisk**, or **APatch** installed. Without Root permissions, Android prevents apps from directly controlling the PMIC kernel sysfs registers.
-> * Engineered specifically for **POCO F5 (`marble`)** and **Redmi Note 12 Turbo** on Android 13 to 16+.
+> * Engineered specifically for **POCO F5 (`marble`)** and **Redmi Note 12 Turbo** (Snapdragon 7+ Gen 2) on Android 13 to 16+.
 
 ---
 
@@ -55,9 +68,9 @@ TorchElos bypasses the restricted Camera HAL and speaks directly to the Qualcomm
   - Smooth intensity slider.
   - Step buttons (`-10`, `-1`, `+1`, `+10`).
   - Direct numeric keypad input (click the level number to type exact values like `42` or `360`).
-  - Quick Presets: **1 (Veilleuse)**, **10% (Eco)**, **25% (Balancé)**, **50% (Clair)**, **75% (Fort)**, **100% (Plein phare)**.
+  - Quick Presets: **1 (Nightlight)**, **10% (Eco)**, **25% (Balanced)**, **50% (Standard)**, **75% (Bright)**, **100% (Turbo)**.
 - **LineageOS Quick Settings Tile:**
-  - Dedicated custom tile (`TorchTileService`) with real-time subtitle feedback (`Veilleuse (1/500)`, `250 / 500 (50%)`, etc.).
+  - Dedicated custom tile (`TorchTileService`) with real-time subtitle feedback (`Nightlight (1/500)`, `250 / 500 (50%)`, etc.).
   - Two-way synchronization with the stock AOSP/LineageOS flashlight tile.
 - **Hardware Telemetry:**
   - Real-time sysfs feedback showing the actual current register read from the physical PMIC.
@@ -78,10 +91,10 @@ TorchElos bypasses the restricted Camera HAL and speaks directly to the Qualcomm
 
 ## 🚀 Installation
 
-1. Download the latest **`TorchElos.apk`** from the [Releases](https://github.com/) section.
+1. Download the latest **`TorchElos-v1.0.0-beta.apk`** from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
 2. Install the APK on your device.
-3. Open **TorchElos** and **Grant Superuser / Root permissions** when prompted (by KernelSU or Magisk).
-4. *(Optional)* Add the **TorchElos** tile to your Quick Settings panel.
+3. Open **TorchElos** and **Grant Superuser / Root permissions** when prompted (by KernelSU, Magisk, or APatch).
+4. *(Optional)* Add the **Torch** tile to your Quick Settings panel.
 
 ---
 
@@ -91,8 +104,8 @@ Prerequisites: Android Studio Ladybug / Meerkat or command-line Gradle with JDK 
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/torchelos.git
-cd torchelos
+git clone https://github.com/tgiraud2007/TorchElos.git
+cd TorchElos
 
 # Build the Debug APK
 ./gradlew assembleDebug
