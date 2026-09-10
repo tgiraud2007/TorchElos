@@ -22,8 +22,14 @@ import com.torchelos.app.ui.screens.DiagnosticScreen
 import com.torchelos.app.ui.screens.MainTorchScreen
 import com.torchelos.app.ui.theme.DarkBackground
 import com.torchelos.app.ui.theme.TorchElosTheme
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : ComponentActivity() {
+
+    private companion object {
+        private const val TURN_OFF_TIMEOUT_MS = 2000L
+    }
 
     private val torchManager by lazy { TorchApp.instance.torchManager }
 
@@ -41,6 +47,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         torchManager.refreshState()
+    }
+
+    override fun onDestroy() {
+        if (isFinishing && torchManager.state.value.isOn) {
+            runBlocking {
+                withTimeoutOrNull(TURN_OFF_TIMEOUT_MS) { torchManager.turnOff() }
+            }
+        }
+        super.onDestroy()
     }
 
     @Composable
