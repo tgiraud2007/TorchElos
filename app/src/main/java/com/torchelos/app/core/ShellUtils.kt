@@ -2,8 +2,6 @@ package com.torchelos.app.core
 
 import android.util.Log
 import com.topjohnwu.superuser.Shell
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 object ShellUtils {
     private const val TAG = "TorchShellUtils"
@@ -20,12 +18,44 @@ object ShellUtils {
     private fun checkSuBinary(): Boolean {
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val line = reader.readLine()
+            val line = process.inputStream.bufferedReader().use { it.readLine() }
             process.waitFor()
             line?.contains("uid=0") == true
         } catch (e: Exception) {
             false
+        }
+    }
+
+    fun detectRootSolution(): String {
+        if (!isRootAvailable()) return "Not detected"
+        return try {
+            val res = execSu("su -v 2>/dev/null || su -V 2>/dev/null")
+            val output = res.output.uppercase()
+            when {
+                output.contains("MAGISK") -> "Operational (Magisk)"
+                output.contains("KSU") || output.contains("KERNELSU") -> "Operational (KernelSU)"
+                output.contains("APATCH") -> "Operational (APatch)"
+                else -> {
+                    val ksuCheck = execSu("test -f /system/bin/ksud -o -d /data/adb/ksu && echo KSU")
+                    if (ksuCheck.output.contains("KSU")) {
+                        "Operational (KernelSU)"
+                    } else {
+                        val apatchCheck = execSu("test -f /data/adb/ap/bin/apd && echo APATCH")
+                        if (apatchCheck.output.contains("APATCH")) {
+                            "Operational (APatch)"
+                        } else {
+                            val magiskCheck = execSu("test -d /data/adb/magisk && echo MAGISK")
+                            if (magiskCheck.output.contains("MAGISK")) {
+                                "Operational (Magisk)"
+                            } else {
+                                "Operational (Root granted)"
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            "Operational (Root granted)"
         }
     }
 

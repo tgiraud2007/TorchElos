@@ -13,7 +13,7 @@
 </h3>
 
 <p align="center">
-  <i>Full 1 to 500 Linear Intensity Range, Zero-Flash Stealth Nightlight Startup, and Bidirectional LineageOS Quick Settings Synchronization.</i>
+  <i>Full 1 to 500 Linear Intensity Range, Zero-Flash Nightlight Startup, and Bidirectional LineageOS Quick Settings Synchronization.</i>
 </p>
 
 ---
@@ -50,14 +50,17 @@ On Xiaomi's Snapdragon 7+ Gen 2 platform (POCO F5 / Redmi Note 12 Turbo) running
 
 TorchElos bypasses the restricted Camera HAL and speaks directly to the Qualcomm PMIC (PM8350C) `leds-qti-flash` kernel drivers via `sysfs`:
 
-* **Direct Sysfs DAC Writes:** Directly drives `/sys/class/leds/led:torch_0` and `/sys/class/leds/led:torch_3` with millivolt/milliamp accuracy from **1 to 500**.
-* **Zero-Flash Stealth Ignition:** Before requesting `CameraManager.setTorchMode(true)`, TorchElos temporarily detaches the Qualcomm CamX V4L2 triggers (`switch0_trigger`, `torch0_trigger`, `torch3_trigger`). When CamX fires its 65 mA event, it drops into the void, allowing TorchElos to power up the LEDs **directly at level 1** without any intermediate spike.
+* **Direct Sysfs DAC Writes:** Directly drives the primary flashlight node `/sys/class/leds/led:torch_0` with millivolt/milliamp accuracy from **1 to 500** (bypassing secondary `torch_3` which is capped at 315 mA by kernel device trees, preventing any saturation or collision bugs).
+* **Zero-Flash Startup:** Before requesting `CameraManager.setTorchMode(true)`, TorchElos temporarily detaches the Qualcomm CamX V4L2 triggers (`switch0_trigger`, `torch0_trigger`, `torch3_trigger`). When CamX fires its 65 mA event, it drops into the void, allowing TorchElos to power up the LED **directly at level 1** without any intermediate spike.
 * **Bidirectional Stock Tile Sync:** Intercepts system torch events so that tapping the official LineageOS Quick Settings tile automatically applies your saved custom intensity level.
 * **100% Non-Destructive & Safe:** No files in `/system` or `/vendor` are ever touched. When the torch is off or when opening the Camera app (Aperture, GCam), standard kernel triggers are automatically restored, ensuring 100% stock photo and video flash calibration.
 
 ---
 
 ## ✨ Features
+
+- **Ultra-Lightweight & Clean Footprint:**
+  - Optimized with R8 / ProGuard and resource shrinking: APK size is only **~1.9 MB** (smaller than competing generic apps like Flashy).
 
 - **Fine-Grained 1 to 500 Range:**
   - `1 / 500` : Ultra-dim nightlight (Veilleuse douce) — will not blind you at night.
@@ -91,7 +94,7 @@ TorchElos bypasses the restricted Camera HAL and speaks directly to the Qualcomm
 
 ## 🚀 Installation
 
-1. Download the latest **`TorchElos-v1.0.0-beta.apk`** from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
+1. Download the latest **`TorchElos-v1.1.0-beta.apk`** from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
 2. Install the APK on your device.
 3. Open **TorchElos** and **Grant Superuser / Root permissions** when prompted (by KernelSU, Magisk, or APatch).
 4. *(Optional)* Add the **Torch** tile to your Quick Settings panel.

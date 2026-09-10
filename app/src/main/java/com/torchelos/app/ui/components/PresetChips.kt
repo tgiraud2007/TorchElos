@@ -16,9 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.torchelos.app.ui.theme.*
 
-data class Preset(
+data class TorchPreset(
     val label: String,
-    val percentage: Int
+    val level: Int
 )
 
 @Composable
@@ -30,39 +30,35 @@ fun PresetChips(
 ) {
     val view = LocalView.current
     val presets = listOf(
-        Preset("10%", 10),
-        Preset("25%", 25),
-        Preset("50%", 50),
-        Preset("75%", 75),
-        Preset("Max", 100)
+        TorchPreset("Nightlight", 1),
+        TorchPreset("Eco", 50),
+        TorchPreset("Standard", 130),
+        TorchPreset("Turbo", 500)
     )
 
     Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
     ) {
         presets.forEach { preset ->
-            val targetLevel = ((preset.percentage / 100f) * maxLevel).toInt().coerceAtLeast(1)
-            val isSelected = (currentLevel == targetLevel) ||
-                    (preset.percentage == 100 && currentLevel == maxLevel)
+            val isSelected = currentLevel == preset.level
 
             Surface(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onSelectLevel(targetLevel)
+                    onSelectLevel(preset.level.coerceIn(1, maxLevel))
                 },
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 color = if (isSelected) TorchAmber else DarkSurface,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 3.dp)
-                    .height(44.dp)
+                    .height(42.dp)
                     .border(
                         width = 1.dp,
                         color = if (isSelected) TorchAmber else Color.White.copy(alpha = 0.08f),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(14.dp)
                     )
             ) {
                 Box(
@@ -72,7 +68,7 @@ fun PresetChips(
                     Text(
                         text = preset.label,
                         color = if (isSelected) Color.Black else OnDarkTextPrimary,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     )
                 }

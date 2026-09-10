@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,8 +34,11 @@ fun DiagnosticScreen(
     val state by torchManager.state.collectAsState()
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
-    var isRunningAutoTest by remember { mutableStateOf(false) }
-    var autoTestStatus by remember { mutableStateOf("") }
+    var isRunningTest by remember { mutableStateOf(false) }
+
+    androidx.activity.compose.BackHandler {
+        onBack()
+    }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -44,7 +46,7 @@ fun DiagnosticScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Hardware Diagnostics",
+                        text = "Settings & Hardware",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = OnDarkTextPrimary
@@ -70,189 +72,199 @@ fun DiagnosticScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
-                .padding(20.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            // Carte État Système & Root
-            InfoCard(title = "System Environment") {
-                InfoRow("Device", "Xiaomi POCO F5 (marble)")
-                InfoRow("OS", "LineageOS 23.2 (Android 16)")
-                InfoRow(
-                    "Root Access",
-                    if (state.isRootAvailable) "Operational (uid=0)" else "Not detected",
-                    isSuccess = state.isRootAvailable
-                )
-            }
+            // Hardware & System Status Card
+            Text(
+                text = "System Status",
+                color = OnDarkTextSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Carte Camera HAL vs Matériel
-            InfoCard(title = "Hardware Analysis") {
-                InfoRow("Camera2 HAL", "strengthMaximumLevel = 1 (No ROM slider)", isWarning = true)
-                InfoRow("PMIC Controller", "Qualcomm PM8350C (leds-qti-flash)")
-                InfoRow("Torch Nodes", "led:torch_0 (500) + led:torch_3 (500)")
-                InfoRow("Switch Node", "led:switch_0 (Channel mask 0x09)")
-                InfoRow("Available Range", "1 to 500 continuous steps")
-                InfoRow("Stock LineageOS Level", "65 (13% max power)")
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    StatusRow(
+                        label = "Root Access",
+                        value = state.rootType.ifEmpty { if (state.isRootAvailable) "Operational" else "Not detected" },
+                        isSuccess = state.isRootAvailable
+                    )
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.05f),
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
+                    StatusRow(
+                        label = "Device",
+                        value = state.deviceName.ifEmpty { "POCO F5 (marble)" },
+                        isSuccess = true
+                    )
+                    HorizontalDivider(
+                        color = Color.White.copy(alpha = 0.05f),
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
+                    StatusRow(
+                        label = "Flash Driver",
+                        value = state.flashHardware.ifEmpty { "Qualcomm PM8350C" },
+                        isSuccess = state.flashHardware != "Standard Camera HAL"
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section Banc de Test Physique
+            // Quick Hardware Test Section
             Text(
-                text = "Hardware Power Testbench",
-                color = OnDarkTextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Visually verify that the physical flash LED changes intensity:",
+                text = "Hardware Test",
                 color = OnDarkTextSecondary,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
 
-            // Bouton Test automatique séquentiel
-            Button(
-                onClick = {
-                    if (!isRunningAutoTest) {
-                        coroutineScope.launch {
-                            isRunningAutoTest = true
-                            val testSteps = listOf(
-                                25 to "Level 25 (5% - Dim nightlight)",
-                                75 to "Level 75 (15% - Eco)",
-                                150 to "Level 150 (30% - Moderate)",
-                                300 to "Level 300 (60% - Bright)",
-                                500 to "Level 500 (100% - Full Turbo!)"
-                            )
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Brightness Ramp Test",
+                        color = OnDarkTextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "Smoothly ramps the flash from Nightlight (1) up to 200 mA over 2 seconds to verify the physical LED without blinding your eyes.",
+                        color = OnDarkTextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
+                    )
 
-                            for ((level, desc) in testSteps) {
-                                autoTestStatus = desc
-                                torchManager.turnOn(level)
-                                delay(2000)
+                    Button(
+                        onClick = {
+                            if (!isRunningTest) {
+                                coroutineScope.launch {
+                                    isRunningTest = true
+                                    val steps = listOf(1, 25, 75, 130, 200)
+                                    for (lvl in steps) {
+                                        torchManager.turnOn(lvl)
+                                        delay(400)
+                                    }
+                                    delay(400)
+                                    torchManager.turnOff()
+                                    isRunningTest = false
+                                }
                             }
-
-                            autoTestStatus = "Test finished - Powering off"
-                            torchManager.turnOff()
-                            delay(1000)
-                            autoTestStatus = ""
-                            isRunningAutoTest = false
-                        }
-                    }
-                },
-                enabled = !isRunningAutoTest,
-                colors = ButtonDefaults.buttonColors(containerColor = TorchAmber),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isRunningAutoTest) "Testing in progress..." else "Run sequential brightness test",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            if (autoTestStatus.isNotEmpty()) {
-                Text(
-                    text = autoTestStatus,
-                    color = TorchAmber,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Paliers de test individuels
-            Text(
-                text = "Instant manual steps:",
-                color = OnDarkTextSecondary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                listOf(25, 65, 150, 300, 500).forEach { lvl ->
-                    OutlinedButton(
-                        onClick = { torchManager.turnOn(lvl) },
+                        },
+                        enabled = !isRunningTest,
+                        colors = ButtonDefaults.buttonColors(containerColor = TorchAmber),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TorchAmber),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TorchAmber.copy(alpha = 0.5f)),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "$lvl",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            text = if (isRunningTest) "Testing flash..." else "Run Brightness Test",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Bouton Éteindre
-            Button(
-                onClick = { torchManager.turnOff() },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Thermal Safety Advisory
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, TorchAmber.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
             ) {
-                Text("Turn off flashlight", color = OnDarkTextPrimary)
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = TorchAmber,
+                        modifier = Modifier.size(20.dp).padding(top = 2.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "Thermal Notice",
+                            color = TorchAmber,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Turbo level (500) drives 500 mA of continuous current. For daily illumination, levels between 1 and 130 (Standard) provide ideal brightness while staying cool and efficient.",
+                            color = OnDarkTextSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // About Section
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text(
+                    text = "TorchElos v1.1.0-beta",
+                    color = OnDarkTextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${state.deviceName.ifEmpty { "POCO F5 (marble)" }} • ${state.romInfo.ifEmpty { "Android" }}",
+                    color = OnDarkTextSecondary.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun InfoCard(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                color = TorchAmber,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            content()
-        }
-    }
-}
-
-@Composable
-private fun InfoRow(
+private fun StatusRow(
     label: String,
     value: String,
-    isSuccess: Boolean? = null,
-    isWarning: Boolean = false
+    isSuccess: Boolean = true
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Text(
             text = label,
@@ -262,33 +274,18 @@ private fun InfoRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = value,
-                color = when {
-                    isSuccess == true -> GreenSuccess
-                    isWarning -> TorchAmber
-                    else -> OnDarkTextPrimary
-                },
+                color = if (isSuccess) OnDarkTextPrimary else TorchAmber,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
             )
-            if (isSuccess == true) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = GreenSuccess,
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .size(14.dp)
-                )
-            } else if (isWarning) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = TorchAmber,
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .size(14.dp)
-                )
-            }
+            Icon(
+                imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Warning,
+                contentDescription = null,
+                tint = if (isSuccess) GreenSuccess else TorchAmber,
+                modifier = Modifier
+                    .padding(start = 6.dp)
+                    .size(15.dp)
+            )
         }
     }
 }

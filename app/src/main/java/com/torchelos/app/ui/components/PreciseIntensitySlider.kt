@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.torchelos.app.ui.theme.*
@@ -39,70 +36,86 @@ fun PreciseIntensitySlider(
 
     val percentage = (currentLevel * 100f / maxLevel).toInt()
 
+    val modeName = when {
+        currentLevel <= 2 -> "Nightlight"
+        currentLevel <= 75 -> "Eco"
+        currentLevel <= 175 -> "Standard"
+        currentLevel <= 350 -> "Bright"
+        else -> "Turbo"
+    }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(22.dp),
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp))
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Entête avec affichage de la valeur exacte cliquable pour saisie directe
+            // Header: Mode info on left, clickable level badge on right
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Flash Intensity",
-                    color = OnDarkTextSecondary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                // Badge de valeur cliquable
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceVariant)
-                        .clickable {
-                            showEditDialog = true
-                        }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
+                Column {
                     Text(
-                        text = "$currentLevel",
-                        color = TorchAmber,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = " / $maxLevel ($percentage%)",
+                        text = "Brightness",
                         color = OnDarkTextSecondary,
                         fontSize = 13.sp,
-                        modifier = Modifier.padding(start = 4.dp)
+                        fontWeight = FontWeight.Medium
                     )
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit value",
-                        tint = OnDarkTextSecondary,
-                        modifier = Modifier
-                            .padding(start = 6.dp)
-                            .size(14.dp)
+                    Text(
+                        text = modeName,
+                        color = OnDarkTextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
+                }
+
+                // Clickable badge for direct numeric entry
+                Surface(
+                    onClick = { showEditDialog = true },
+                    shape = RoundedCornerShape(12.dp),
+                    color = DarkSurfaceVariant,
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    ) {
+                        Text(
+                            text = "$currentLevel",
+                            color = TorchAmber,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = " / $maxLevel",
+                            color = OnDarkTextSecondary,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 2.dp)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit value",
+                            tint = OnDarkTextSecondary,
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .size(13.dp)
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Slider continu 1 à 500
+            // Smooth high-definition Slider
             Slider(
                 value = currentLevel.toFloat(),
                 onValueChange = { newValue ->
@@ -123,49 +136,48 @@ fun PreciseIntensitySlider(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Boutons de réglage fin pas-à-pas (+1, -1, +10, -10)
+            // Slider bound markers
             Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
-                StepButton(text = "-10") {
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onLevelChanged((currentLevel - 10).coerceIn(minLevel, maxLevel))
-                }
-                StepButton(text = "-1") {
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onLevelChanged((currentLevel - 1).coerceIn(minLevel, maxLevel))
-                }
-                StepButton(text = "+1") {
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onLevelChanged((currentLevel + 1).coerceIn(minLevel, maxLevel))
-                }
-                StepButton(text = "+10") {
-                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onLevelChanged((currentLevel + 10).coerceIn(minLevel, maxLevel))
-                }
+                Text(
+                    text = "1 (Min)",
+                    color = OnDarkTextSecondary.copy(alpha = 0.6f),
+                    fontSize = 11.sp
+                )
+                Text(
+                    text = "$percentage%",
+                    color = TorchAmber.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "500 (Turbo)",
+                    color = OnDarkTextSecondary.copy(alpha = 0.6f),
+                    fontSize = 11.sp
+                )
             }
         }
     }
 
-    // Dialogue pour taper directement une valeur au clavier (ex: 62, 356)
+    // Direct numeric input dialog
     if (showEditDialog) {
         var textInput by remember { mutableStateOf(currentLevel.toString()) }
 
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
             title = {
-                Text("Enter Exact Value", color = OnDarkTextPrimary)
+                Text("Exact Intensity", color = OnDarkTextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             },
             text = {
                 Column {
                     Text(
-                        "Enter a value between $minLevel and $maxLevel:",
+                        "Enter value between $minLevel and $maxLevel:",
                         color = OnDarkTextSecondary,
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
@@ -202,30 +214,5 @@ fun PreciseIntensitySlider(
             },
             containerColor = DarkSurface
         )
-    }
-}
-
-@Composable
-private fun StepButton(
-    text: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = DarkSurfaceVariant,
-        modifier = Modifier.height(36.dp)
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.padding(horizontal = 14.dp)
-        ) {
-            Text(
-                text = text,
-                color = OnDarkTextPrimary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
     }
 }

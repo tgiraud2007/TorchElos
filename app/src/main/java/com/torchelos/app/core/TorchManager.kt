@@ -18,13 +18,14 @@ import kotlinx.coroutines.launch
 
 data class TorchState(
     val isOn: Boolean = false,
-    val level: Int = 65,
+    val level: Int = 130,
     val maxLevel: Int = 500,
     val minLevel: Int = 1,
-    val activeEngineId: String = "",
-    val activeEngineName: String = "",
     val isRootAvailable: Boolean = false,
-    val hardwareCurrentReadout: String = ""
+    val rootType: String = "Not detected",
+    val deviceName: String = "",
+    val flashHardware: String = "",
+    val romInfo: String = ""
 )
 
 class TorchManager(private val context: Context) {
@@ -33,7 +34,6 @@ class TorchManager(private val context: Context) {
         private const val TAG = "TorchManager"
         private const val PREFS_NAME = "torchelos_prefs"
         private const val KEY_LAST_LEVEL = "last_level"
-        private const val KEY_ENGINE = "selected_engine"
     }
 
     private val prefs: SharedPreferences =
@@ -41,8 +41,8 @@ class TorchManager(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    val pocoEngine = PocoSysfsTorchEngine()
-    val camera2Engine = Camera2TorchEngine(context)
+    private val pocoEngine = PocoSysfsTorchEngine()
+    private val camera2Engine = Camera2TorchEngine(context)
 
     private var currentEngine: TorchEngine = pocoEngine
 
@@ -59,7 +59,6 @@ class TorchManager(private val context: Context) {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
             if (cameraId != "0") return
             super.onTorchModeChanged(cameraId, enabled)
-            camera2Engine.updateTorchState(enabled)
 
             sliderDebounceJob?.cancel()
             _state.value = _state.value.copy(isOn = enabled)
@@ -69,7 +68,6 @@ class TorchManager(private val context: Context) {
                 _state.value = _state.value.copy(isOn = true, level = savedLevel)
                 scope.launch {
                     pocoEngine.setStrength(savedLevel)
-                    refreshState()
                     notifyTileUpdate()
                 }
             } else {
@@ -77,7 +75,6 @@ class TorchManager(private val context: Context) {
                 scope.launch {
                     pocoEngine.turnOff()
                     pocoEngine.ensureTriggersRestored()
-                    refreshState()
                     notifyTileUpdate()
                 }
             }
@@ -91,7 +88,6 @@ class TorchManager(private val context: Context) {
                 scope.launch {
                     pocoEngine.turnOff()
                     pocoEngine.ensureTriggersRestored()
-                    refreshState()
                     notifyTileUpdate()
                 }
             }
@@ -101,6 +97,7 @@ class TorchManager(private val context: Context) {
     fun init() {
         scope.launch {
             val rootOk = ShellUtils.isRootAvailable()
+            val rootSolution = ShellUtils.detectRootSolution()
             val pocoOk = pocoEngine.isAvailable()
 
             currentEngine = if (pocoOk) {
@@ -109,7 +106,7 @@ class TorchManager(private val context: Context) {
                 camera2Engine
             }
 
-            // Vérifier et restaurer les 3 triggers s'ils sont manquants
+            // Restore triggers if missing
             pocoEngine.ensureTriggersRestored()
 
             val savedLevel = prefs.getInt(KEY_LAST_LEVEL, currentEngine.getDefaultLevel())
@@ -119,16 +116,18 @@ class TorchManager(private val context: Context) {
                 level = savedLevel,
                 maxLevel = currentEngine.getMaxLevel(),
                 minLevel = currentEngine.getMinLevel(),
-                activeEngineId = currentEngine.id,
-                activeEngineName = currentEngine.displayName,
-                isRootAvailable = rootOk
+                isRootAvailable = rootOk,
+                rootType = rootSolution,
+                deviceName = detectDeviceName(),
+                flashHardware = detectFlashHardware(),
+                romInfo = detectRomInfo()
             )
 
-            // Écouter les changements système pour la synchronisation parfaite
+            // Register system callback for bidirectional sync with QS tile
             try {
                 cameraManager.registerTorchCallback(torchCallback, Handler(Looper.getMainLooper()))
             } catch (e: Exception) {
-                Log.w(TAG, "Erreur registerTorchCallback", e)
+                Log.w(TAG, "registerTorchCallback failed", e)
             }
         }
     }
@@ -147,24 +146,24 @@ class TorchManager(private val context: Context) {
         _state.value = _state.value.copy(isOn = true, level = targetLevel)
 
         val ok = if (currentEngine is PocoSysfsTorchEngine) {
-            // 1. Désarmer temporairement Qualcomm CamX en détachant les triggers
-            ShellUtils.execSu("echo none > /sys/class/leds/led:switch_0/trigger && echo none > /sys/class/leds/led:torch_0/trigger && echo none > /sys/class/leds/led:torch_3/trigger")
+            // 1. Temporarily disarm Qualcomm CamX triggers to suppress the 65 mA factory pulse
+            pocoEngine.disarmTriggers()
 
-            // 2. Allumer via CameraManager -> la tuile officielle LineageOS s'allume sans que CamX ne puisse allumer la LED à 65mA
+            // 2. Enable via CameraManager so LineageOS Quick Settings tile becomes active
             try {
                 cameraManager.setTorchMode("0", true)
             } catch (e: Exception) {
-                Log.w(TAG, "setTorchMode(true) échoué", e)
+                Log.w(TAG, "setTorchMode(true) failed", e)
             }
 
-            // 3. Allumer directement le matériel à l'intensité souhaitée (zéro flash, instantané)
+            // 3. Directly power the LED at desired target level
             pocoEngine.turnOn(targetLevel)
         } else {
             try {
                 cameraManager.setTorchMode("0", true)
                 true
             } catch (e: Exception) {
-                Log.w(TAG, "setTorchMode(true) échoué", e)
+                Log.w(TAG, "setTorchMode(true) failed", e)
                 false
             }
         }
@@ -179,17 +178,17 @@ class TorchManager(private val context: Context) {
         _state.value = _state.value.copy(isOn = false)
 
         val ok = if (currentEngine is PocoSysfsTorchEngine) {
-            // 1. Éteindre physiquement la LED immédiatement
+            // 1. Physically turn off the LED immediately
             val res = pocoEngine.turnOff()
 
-            // 2. Éteindre via CameraManager -> la tuile officielle LineageOS s'éteint
+            // 2. Turn off via CameraManager -> LineageOS QS tile reflects state
             try {
                 cameraManager.setTorchMode("0", false)
             } catch (e: Exception) {
-                Log.w(TAG, "setTorchMode(false) échoué", e)
+                Log.w(TAG, "setTorchMode(false) failed", e)
             }
 
-            // 3. S'assurer que les triggers système sont restaurés pour la caméra
+            // 3. Ensure system triggers are restored for the camera app
             pocoEngine.ensureTriggersRestored()
             res
         } else {
@@ -197,7 +196,7 @@ class TorchManager(private val context: Context) {
                 cameraManager.setTorchMode("0", false)
                 true
             } catch (e: Exception) {
-                Log.w(TAG, "setTorchMode(false) échoué", e)
+                Log.w(TAG, "setTorchMode(false) failed", e)
                 false
             }
         }
@@ -212,15 +211,10 @@ class TorchManager(private val context: Context) {
         saveLevel(clamped)
         _state.value = _state.value.copy(level = clamped)
 
-        // Que la lampe soit allumée ou éteinte, on met à jour les registres matériels :
-        // - Si allumée : l'intensité varie instantanément en direct
-        // - Si éteinte : les registres sont prêts pour démarrer directement à cette intensité
         sliderDebounceJob?.cancel()
         sliderDebounceJob = scope.launch {
-            delay(15) // Débouncing fluide à ~60fps
+            delay(15) // Smooth 60fps debounce
             pocoEngine.setStrength(clamped)
-            val readout = pocoEngine.readHardwareLevel().toString()
-            _state.value = _state.value.copy(hardwareCurrentReadout = readout)
             notifyTileUpdate()
         }
     }
@@ -232,23 +226,72 @@ class TorchManager(private val context: Context) {
                 android.content.ComponentName(context, com.torchelos.app.service.TorchTileService::class.java)
             )
         } catch (e: Exception) {
-            Log.w(TAG, "requestListeningState échoué", e)
+            Log.w(TAG, "requestListeningState failed", e)
         }
     }
 
     fun refreshState() {
         scope.launch {
-            val readout = if (currentEngine is PocoSysfsTorchEngine) {
-                pocoEngine.readHardwareLevel().toString()
-            } else ""
-
+            val rootOk = ShellUtils.isRootAvailable()
+            val rootSolution = ShellUtils.detectRootSolution()
             _state.value = _state.value.copy(
                 maxLevel = currentEngine.getMaxLevel(),
                 minLevel = currentEngine.getMinLevel(),
-                activeEngineId = currentEngine.id,
-                activeEngineName = currentEngine.displayName,
-                hardwareCurrentReadout = readout
+                isRootAvailable = rootOk,
+                rootType = rootSolution,
+                deviceName = detectDeviceName(),
+                flashHardware = detectFlashHardware(),
+                romInfo = detectRomInfo()
             )
+        }
+    }
+
+    fun cleanup() {
+        if (currentEngine is PocoSysfsTorchEngine) {
+            pocoEngine.ensureTriggersRestored()
+        }
+    }
+
+    private fun detectDeviceName(): String {
+        val model = android.os.Build.MODEL.trim()
+        val device = android.os.Build.DEVICE.trim()
+        return if (model.contains(device, ignoreCase = true)) {
+            model
+        } else {
+            "$model ($device)"
+        }
+    }
+
+    private fun detectFlashHardware(): String {
+        val device = android.os.Build.DEVICE.lowercase()
+        return when {
+            device == "marble" || device == "marblein" -> "Qualcomm PM8350C"
+            pocoEngine.isAvailable() -> "Qualcomm QTI Flash (led:torch_0)"
+            else -> "Standard Camera HAL"
+        }
+    }
+
+    private fun detectRomInfo(): String {
+        val release = android.os.Build.VERSION.RELEASE
+        val lineageDisplay = getSystemProperty("ro.lineage.display.version")
+        val lineageVer = getSystemProperty("ro.lineage.version")
+        val crdroidVer = getSystemProperty("ro.crdroid.version")
+        val display = android.os.Build.DISPLAY
+        return when {
+            lineageDisplay.isNotEmpty() -> "LineageOS $lineageDisplay (Android $release)"
+            lineageVer.isNotEmpty() -> "LineageOS $lineageVer (Android $release)"
+            crdroidVer.isNotEmpty() -> "crDroid $crdroidVer (Android $release)"
+            display.contains("lineage", ignoreCase = true) -> "LineageOS (Android $release)"
+            else -> "Android $release"
+        }
+    }
+
+    private fun getSystemProperty(key: String): String {
+        return try {
+            val p = Runtime.getRuntime().exec(arrayOf("getprop", key))
+            p.inputStream.bufferedReader().use { it.readLine()?.trim() ?: "" }
+        } catch (e: Exception) {
+            ""
         }
     }
 

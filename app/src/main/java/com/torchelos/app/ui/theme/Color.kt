@@ -14,4 +14,3 @@ val OnDarkTextPrimary = Color(0xFFF1F3F9)
 val OnDarkTextSecondary = Color(0xFF9DA3B4)
 
 val GreenSuccess = Color(0xFF4CAF50)
-val RedInactive = Color(0xFFE57373)

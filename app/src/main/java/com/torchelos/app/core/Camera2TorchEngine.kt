@@ -12,9 +12,6 @@ class Camera2TorchEngine(private val context: Context) : TorchEngine {
         private const val TAG = "Camera2TorchEngine"
     }
 
-    override val id: String = "camera2_api"
-    override val displayName: String = "Camera2 API (Standard Android)"
-
     private val cameraManager: CameraManager by lazy {
         context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     }
@@ -22,7 +19,6 @@ class Camera2TorchEngine(private val context: Context) : TorchEngine {
     private var cameraIdWithFlash: String? = null
     private var maxStrength: Int = 1
     private var defaultStrength: Int = 1
-    private var isTorchOnState: Boolean = false
 
     init {
         detectFlashCamera()
@@ -42,12 +38,12 @@ class Camera2TorchEngine(private val context: Context) : TorchEngine {
                         maxStrength = characteristics.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) ?: 1
                         defaultStrength = characteristics.get(CameraCharacteristics.FLASH_INFO_STRENGTH_DEFAULT_LEVEL) ?: 1
                     }
-                    Log.d(TAG, "Caméra arrière trouvée ID: $id, maxStrength: $maxStrength")
+                    Log.d(TAG, "Back flash camera found ID: $id, maxStrength: $maxStrength")
                     break
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Erreur détection caméra flash", e)
+            Log.e(TAG, "Error detecting flash camera", e)
         }
     }
 
@@ -66,10 +62,9 @@ class Camera2TorchEngine(private val context: Context) : TorchEngine {
             } else {
                 cameraManager.setTorchMode(camId, true)
             }
-            isTorchOnState = true
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Erreur turnOn Camera2", e)
+            Log.e(TAG, "Error turnOn Camera2", e)
             false
         }
     }
@@ -80,14 +75,12 @@ class Camera2TorchEngine(private val context: Context) : TorchEngine {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && maxStrength > 1) {
                 val clamped = level.coerceIn(1, maxStrength)
                 cameraManager.turnOnTorchWithStrengthLevel(camId, clamped)
-                isTorchOnState = true
                 true
             } else {
-                // Si le HAL ne supporte pas de niveaux, on ne peut que toggler
                 false
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Erreur setStrength Camera2", e)
+            Log.e(TAG, "Error setStrength Camera2", e)
             false
         }
     }
@@ -96,17 +89,10 @@ class Camera2TorchEngine(private val context: Context) : TorchEngine {
         val camId = cameraIdWithFlash ?: return false
         return try {
             cameraManager.setTorchMode(camId, false)
-            isTorchOnState = false
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Erreur turnOff Camera2", e)
+            Log.e(TAG, "Error turnOff Camera2", e)
             false
         }
-    }
-
-    override fun isTorchOn(): Boolean = isTorchOnState
-
-    fun updateTorchState(on: Boolean) {
-        isTorchOnState = on
     }
 }

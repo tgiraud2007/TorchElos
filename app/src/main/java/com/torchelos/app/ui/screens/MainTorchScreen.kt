@@ -1,20 +1,16 @@
 package com.torchelos.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,9 +39,9 @@ fun MainTorchScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
-                // Titre de l'application
+                // Application Title with Flash icon
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.FlashOn,
@@ -62,16 +58,17 @@ fun MainTorchScreen(
                     )
                 }
 
-                // Bouton Diagnostic / Test Matériel
+                // Settings button
                 IconButton(
                     onClick = onOpenDiagnostic,
                     modifier = Modifier
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(DarkSurfaceVariant)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Build,
-                        contentDescription = "Hardware Diagnostics",
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
                         tint = OnDarkTextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -85,56 +82,47 @@ fun MainTorchScreen(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(bottom = 24.dp)
+                .padding(bottom = 20.dp)
         ) {
-            // Badge d'état du moteur actif
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkSurface)
-                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Central Power Button & Live Status
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.weight(1f)
             ) {
                 Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(if (state.isRootAvailable) GreenSuccess else RedInactive)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    PowerButton(
+                        isOn = state.isOn,
+                        intensityRatio = intensityRatio,
+                        onToggle = onToggle
+                    )
+                }
+
                 Text(
-                    text = if (state.isRootAvailable) "POCO F5 (PM8350C) • Root Active" else "Standard Camera Mode",
-                    color = OnDarkTextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
+                    text = if (state.isOn) "ON • ${state.level} mA" else "TAP TO TURN ON",
+                    color = if (state.isOn) TorchAmber else OnDarkTextSecondary.copy(alpha = 0.5f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = if (state.isOn) 0.5.sp else 1.2.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
 
-            // Bouton tactile central ON/OFF
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                PowerButton(
-                    isOn = state.isOn,
-                    intensityRatio = intensityRatio,
-                    onToggle = onToggle
-                )
-            }
-
-            // Puces de raccourcis rapides
+            // Quick Preset Modes
             PresetChips(
                 currentLevel = state.level,
                 maxLevel = state.maxLevel,
                 onSelectLevel = onLevelChanged,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 14.dp)
             )
 
-            // Slider continu 1 à 500 avec boutons pas-à-pas et saisie directe
+            // Precision Intensity Slider
             PreciseIntensitySlider(
                 currentLevel = state.level,
                 minLevel = state.minLevel,
