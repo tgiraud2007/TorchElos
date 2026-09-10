@@ -144,6 +144,17 @@ keytool -genkeypair -v -keystore app/torchelos-release.jks -storetype PKCS12 \
 
 Without `keystore.properties`, release builds are simply left unsigned (debug builds are unaffected).
 
+### Releasing
+
+Releases are automated. Bump `versionName` and `versionCode` in `app/build.gradle.kts`, commit, then push a tag:
+
+```bash
+git tag v1.2.0-beta
+git push origin v1.2.0-beta
+```
+
+The **Release** workflow then builds the signed APK and publishes it on the tag. Signing relies on the repository Actions secrets (`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`).
+
 ---
 
 ## 📄 License
