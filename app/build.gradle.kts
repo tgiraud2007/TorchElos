@@ -13,7 +13,12 @@ val keystoreProperties = Properties().apply {
         keystorePropertiesFile.inputStream().use { load(it) }
     }
 }
-val hasReleaseKeystore = keystorePropertiesFile.exists()
+val requiredKeystoreKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+val hasReleaseKeystore = keystorePropertiesFile.exists() &&
+    requiredKeystoreKeys.all { !keystoreProperties.getProperty(it).isNullOrBlank() }
+if (keystorePropertiesFile.exists() && !hasReleaseKeystore) {
+    logger.warn("keystore.properties is incomplete; release builds will be left unsigned")
+}
 
 android {
     namespace = "com.torchelos.app"
@@ -34,7 +39,6 @@ android {
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
-                enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
                 enableV4Signing = false

@@ -24,6 +24,12 @@ build/
 .idea/
 .kotlin/
 
+# Local tooling
+.vscode/
+.fleet/
+*.log
+*.hprof
+
 # Signing configuration & keystores (never commit)
 keystore.properties
 *.jks
