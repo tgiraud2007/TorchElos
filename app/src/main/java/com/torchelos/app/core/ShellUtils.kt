@@ -3,15 +3,71 @@ package com.torchelos.app.core
 import android.util.Log
 import com.topjohnwu.superuser.Shell
 
+data class ShellResult(
+    val isSuccess: Boolean,
+    val output: String
+)
+
 object ShellUtils {
-    private const val TAG = "TorchShellUtils"
+    private const val TAG = "ShellUtils"
+
+    const val ROOT_NONE = "Not detected"
+    const val ROOT_KERNELSU = "KernelSU"
+    const val ROOT_MAGISK = "Magisk"
+    const val ROOT_APATCH = "APatch"
+    const val ROOT_GRANTED = "Root granted"
+
+    @Volatile
+    private var rootShell: Shell? = null
+
+    @Volatile
+    private var rootAvailability: Boolean? = null
 
     fun isRootAvailable(): Boolean {
-        return try {
-            Shell.isAppGrantedRoot() == true || checkSuBinary()
+        rootAvailability?.let { return it }
+        val granted = try {
+            Shell.isAppGrantedRoot()
         } catch (e: Exception) {
-            Log.w(TAG, "Erreur vérification root", e)
-            false
+            Log.w(TAG, "Root state check failed", e)
+            null
+        }
+        val available = granted ?: checkSuBinary()
+        rootAvailability = available
+        return available
+    }
+
+    fun detectRootSolution(): String {
+        if (!isRootAvailable()) return ROOT_NONE
+
+        val version = execSu("su -v 2>/dev/null || su -V 2>/dev/null").output.uppercase()
+        return when {
+            version.contains("KSU") || version.contains("KERNELSU") -> ROOT_KERNELSU
+            version.contains("MAGISK") -> ROOT_MAGISK
+            version.contains("APATCH") -> ROOT_APATCH
+            else -> detectRootByFiles()
+        }
+    }
+
+    fun execSu(command: String): ShellResult {
+        val shell = obtainShell()
+        if (shell != null) {
+            try {
+                val result = shell.newJob().add(command).exec()
+                return ShellResult(result.isSuccess, result.out.joinToString("\n"))
+            } catch (e: Exception) {
+                Log.w(TAG, "libsu execution failed, falling back to direct su", e)
+            }
+        }
+        return execSuDirect(command)
+    }
+
+    private fun obtainShell(): Shell? {
+        rootShell?.let { return it }
+        return try {
+            Shell.getShell().also { rootShell = it }
+        } catch (e: Exception) {
+            Log.w(TAG, "Unable to obtain root shell", e)
+            null
         }
     }
 
@@ -26,75 +82,30 @@ object ShellUtils {
         }
     }
 
-    fun detectRootSolution(): String {
-        if (!isRootAvailable()) return "Not detected"
-        return try {
-            val res = execSu("su -v 2>/dev/null || su -V 2>/dev/null")
-            val output = res.output.uppercase()
-            when {
-                output.contains("MAGISK") -> "Operational (Magisk)"
-                output.contains("KSU") || output.contains("KERNELSU") -> "Operational (KernelSU)"
-                output.contains("APATCH") -> "Operational (APatch)"
-                else -> {
-                    val ksuCheck = execSu("test -f /system/bin/ksud -o -d /data/adb/ksu && echo KSU")
-                    if (ksuCheck.output.contains("KSU")) {
-                        "Operational (KernelSU)"
-                    } else {
-                        val apatchCheck = execSu("test -f /data/adb/ap/bin/apd && echo APATCH")
-                        if (apatchCheck.output.contains("APATCH")) {
-                            "Operational (APatch)"
-                        } else {
-                            val magiskCheck = execSu("test -d /data/adb/magisk && echo MAGISK")
-                            if (magiskCheck.output.contains("MAGISK")) {
-                                "Operational (Magisk)"
-                            } else {
-                                "Operational (Root granted)"
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            "Operational (Root granted)"
+    private fun detectRootByFiles(): String {
+        if (execSu("test -d /data/adb/ksu && echo KSU").output.contains("KSU")) {
+            return ROOT_KERNELSU
         }
-    }
-
-    fun execSu(command: String): ShellResult {
-        return try {
-            // Méthode 1 : via libsu
-            val result = Shell.cmd(command).exec()
-            if (result.isSuccess) {
-                ShellResult(true, result.out.joinToString("\n"), result.code)
-            } else {
-                // Fallback direct Runtime su
-                execSuDirect(command)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Erreur libsu, tentative direct su: ${e.message}")
-            execSuDirect(command)
+        if (execSu("test -f /data/adb/ap/bin/apd && echo APATCH").output.contains("APATCH")) {
+            return ROOT_APATCH
         }
+        if (execSu("test -d /data/adb/magisk && echo MAGISK").output.contains("MAGISK")) {
+            return ROOT_MAGISK
+        }
+        return ROOT_GRANTED
     }
 
     private fun execSuDirect(command: String): ShellResult {
         return try {
             val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
-            val output = process.inputStream.bufferedReader().readText().trim()
-            val error = process.errorStream.bufferedReader().readText().trim()
+            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+            val error = process.errorStream.bufferedReader().use { it.readText() }.trim()
             val exitCode = process.waitFor()
-            if (exitCode == 0) {
-                ShellResult(true, output, 0)
-            } else {
-                ShellResult(false, if (error.isNotEmpty()) error else output, exitCode)
-            }
+            val success = exitCode == 0
+            ShellResult(success, if (success) output else error.ifEmpty { output })
         } catch (e: Exception) {
-            Log.e(TAG, "Erreur exécution direct su: $command", e)
-            ShellResult(false, e.message ?: "Erreur inconnue", -1)
+            Log.e(TAG, "Direct su execution failed: $command", e)
+            ShellResult(false, e.message.orEmpty())
         }
     }
 }
-
-data class ShellResult(
-    val isSuccess: Boolean,
-    val output: String,
-    val exitCode: Int
-)
