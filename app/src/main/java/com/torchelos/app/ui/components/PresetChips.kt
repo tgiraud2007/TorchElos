@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,11 +43,19 @@ private val PRESETS = listOf(
 @Composable
 fun PresetChips(
     currentLevel: Int,
+    minLevel: Int,
     maxLevel: Int,
     onSelectLevel: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
+    val presets = remember(minLevel, maxLevel) {
+        PRESETS
+            .map { preset ->
+                TorchPreset(preset.labelRes, preset.level.coerceIn(minLevel, maxLevel))
+            }
+            .distinctBy { it.level }
+    }
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -54,20 +63,19 @@ fun PresetChips(
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
     ) {
-        PRESETS.forEach { preset ->
-            val level = preset.level.coerceIn(1, maxLevel)
-            val isSelected = currentLevel == level
+        presets.forEach { preset ->
+            val isSelected = currentLevel == preset.level
 
             Surface(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onSelectLevel(level)
+                    onSelectLevel(preset.level)
                 },
                 shape = RoundedCornerShape(14.dp),
                 color = if (isSelected) TorchAmber else DarkSurface,
                 modifier = Modifier
                     .weight(1f)
-                    .height(42.dp)
+                    .height(48.dp)
                     .border(
                         width = 1.dp,
                         color = if (isSelected) TorchAmber else Color.White.copy(alpha = 0.08f),

@@ -20,6 +20,7 @@
     <string name="min_level_label">%1$d (Min)</string>
     <string name="max_level_label">%1$d (Turbo)</string>
     <string name="percentage">%1$d%%</string>
+    <string name="level_fraction_suffix">/ %1$d</string>
     <string name="edit_value">Edit value</string>
     <string name="exact_intensity">Exact Intensity</string>
     <string name="enter_value_between">Allowed range: %1$d – %2$d</string>
@@ -27,6 +28,7 @@
     <string name="cancel">Cancel</string>
     <string name="intensity_unavailable_title">Intensity control unavailable</string>
     <string name="intensity_unavailable_message">This device does not expose multi-level flashlight control. On POCO F5 (marble), root access via KernelSU, Magisk or APatch is required.</string>
+    <string name="detecting_hardware">Detecting hardware…</string>
 
     <!-- Settings & diagnostics -->
     <string name="settings_hardware_title">Settings &amp; Hardware</string>
@@ -51,5 +53,5 @@
     <string name="tile_nightlight">Nightlight (%1$d/%2$d)</string>
     <string name="tile_max">Max (%1$d/%2$d)</string>
     <string name="tile_level_on">%1$d / %2$d (%3$d%%)</string>
-    <string name="tile_level_off">%1$d / %2$d</string>
+    <string name="tile_level_off">Off (%1$d/%2$d)</string>
 </resources>

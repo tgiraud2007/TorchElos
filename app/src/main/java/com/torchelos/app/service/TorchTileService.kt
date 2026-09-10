@@ -5,6 +5,8 @@ import android.service.quicksettings.TileService
 import com.torchelos.app.R
 import com.torchelos.app.TorchApp
 import com.torchelos.app.core.PocoSysfsTorchEngine
+import com.torchelos.app.core.TorchState
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,14 +22,11 @@ class TorchTileService : TileService() {
 
     override fun onStartListening() {
         super.onStartListening()
-        val current = torchManager.state.value
-        updateTile(current.isOn, current.level, current.maxLevel)
+        updateTile(torchManager.state.value)
 
         stateJob?.cancel()
         stateJob = scope.launch {
-            torchManager.state.collectLatest { state ->
-                updateTile(state.isOn, state.level, state.maxLevel)
-            }
+            torchManager.state.collectLatest { state -> updateTile(state) }
         }
     }
 
@@ -47,20 +46,27 @@ class TorchTileService : TileService() {
         torchManager.toggleTorch()
     }
 
-    private fun updateTile(isOn: Boolean, level: Int, maxLevel: Int) {
+    private fun updateTile(state: TorchState) {
         val tile = qsTile ?: return
-        tile.state = if (isOn) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+        tile.state = if (state.isOn) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = getString(R.string.tile_name)
+
+        val percentage = if (state.maxLevel > 0) {
+            (state.level * 100f / state.maxLevel).roundToInt()
+        } else {
+            0
+        }
         tile.subtitle = when {
-            !isOn -> getString(R.string.tile_level_off, level, maxLevel)
-            level <= PocoSysfsTorchEngine.HARDWARE_MIN_LEVEL ->
-                getString(R.string.tile_nightlight, level, maxLevel)
-            level >= maxLevel -> getString(R.string.tile_max, level, maxLevel)
+            !state.isOn -> getString(R.string.tile_level_off, state.level, state.maxLevel)
+            state.isHardwareControlled && state.level <= PocoSysfsTorchEngine.HARDWARE_MIN_LEVEL ->
+                getString(R.string.tile_nightlight, state.level, state.maxLevel)
+            state.level >= state.maxLevel ->
+                getString(R.string.tile_max, state.level, state.maxLevel)
             else -> getString(
                 R.string.tile_level_on,
-                level,
-                maxLevel,
-                level * 100 / maxLevel
+                state.level,
+                state.maxLevel,
+                percentage
             )
         }
         tile.updateTile()

@@ -125,13 +125,13 @@ fun PreciseIntensitySlider(
                         modifier = Modifier.padding(horizontal = 12.dp)
                     ) {
                         Text(
-                            text = "$currentLevel",
+                            text = currentLevel.toString(),
                             color = TorchAmber,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = " / $maxLevel",
+                            text = stringResource(R.string.level_fraction_suffix, maxLevel),
                             color = OnDarkTextSecondary,
                             fontSize = 12.sp
                         )

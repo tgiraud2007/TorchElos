@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.torchelos.app.R
 import com.torchelos.app.ui.theme.DarkSurface
@@ -84,7 +85,6 @@ fun PowerButton(
             .size(190.dp)
             .scale(buttonScale.value)
     ) {
-        // Lueur extérieure réactive si allumé
         if (isOn) {
             Box(
                 modifier = Modifier
@@ -94,7 +94,6 @@ fun PowerButton(
             )
         }
 
-        // Bouton principal
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -113,7 +112,11 @@ fun PowerButton(
                 )
                 .clickable(
                     interactionSource = interactionSource,
-                    indication = null
+                    indication = null,
+                    role = Role.Button,
+                    onClickLabel = stringResource(
+                        if (isOn) R.string.cd_turn_off else R.string.cd_turn_on
+                    )
                 ) {
                     view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                     onToggle()

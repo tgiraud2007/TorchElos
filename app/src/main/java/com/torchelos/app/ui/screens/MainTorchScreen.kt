@@ -146,22 +146,30 @@ fun MainTorchScreen(
                 )
             }
 
-            if (state.maxLevel > 1) {
-                PresetChips(
-                    currentLevel = state.level,
-                    maxLevel = state.maxLevel,
-                    onSelectLevel = onLevelChanged,
-                    modifier = Modifier.padding(bottom = 14.dp)
+            when {
+                state.isDetecting -> Text(
+                    text = stringResource(R.string.detecting_hardware),
+                    color = OnDarkTextSecondary,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
+                state.maxLevel > 1 -> {
+                    PresetChips(
+                        currentLevel = state.level,
+                        minLevel = state.minLevel,
+                        maxLevel = state.maxLevel,
+                        onSelectLevel = onLevelChanged,
+                        modifier = Modifier.padding(bottom = 14.dp)
+                    )
 
-                PreciseIntensitySlider(
-                    currentLevel = state.level,
-                    minLevel = state.minLevel,
-                    maxLevel = state.maxLevel,
-                    onLevelChanged = onLevelChanged
-                )
-            } else {
-                IntensityUnavailableCard(modifier = Modifier.padding(bottom = 8.dp))
+                    PreciseIntensitySlider(
+                        currentLevel = state.level,
+                        minLevel = state.minLevel,
+                        maxLevel = state.maxLevel,
+                        onLevelChanged = onLevelChanged
+                    )
+                }
+                else -> IntensityUnavailableCard(modifier = Modifier.padding(bottom = 8.dp))
             }
         }
     }
