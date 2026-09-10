@@ -38,45 +38,43 @@
 
 ---
 
-## 📖 The Problem on POCO F5 (`marble`)
+## 📖 Background
 
-On Xiaomi's Snapdragon 7+ Gen 2 platform (POCO F5 / Redmi Note 12 Turbo) running AOSP, LineageOS, or stock rooted HyperOS / MIUI:
-1. **Camera HAL Limitation:** The OEM Camera HAL declares `CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL = 1`. Because of this, standard Android 13+ torch apps (such as *FlashDim* or *Flashy*) **cannot control brightness** and remain stuck at level 1 on HyperOS and AOSP.
-2. **The 65 mA Blinding Spike:** Qualcomm CamX hardcodes `overrideFlashTorchCurrent=130` in `/vendor/etc/camera/camxoverridesettings.txt` (divided between both LEDs = 65 mA per diode). Whenever the standard system turns on the torch, CamX fires an immediate 65 mA pulse. If you wanted a dim nightlight to check on a baby or read at night, your eyes were blinded before any dimming could occur.
+On the POCO F5 and Redmi Note 12 Turbo (Snapdragon 7+ Gen 2), standard Android flashlight apps cannot adjust brightness because the OEM camera HAL does not expose multi-level brightness controls (`FLASH_INFO_STRENGTH_MAXIMUM_LEVEL = 1`). Furthermore, standard system drivers fire an intense factory pulse upon activation, blinding your eyes when all you need is a soft nightlight.
 
 ---
 
-## 💡 How TorchElos Solves It
+## 💡 How TorchElos Works
 
-TorchElos bypasses the restricted Camera HAL and speaks directly to the Qualcomm PMIC (PM8350C) `leds-qti-flash` kernel drivers via `sysfs` on both AOSP and stock rooted HyperOS / MIUI:
+TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qualcomm PMIC kernel drivers via root (`sysfs`):
 
-* **Direct Sysfs DAC Writes:** Directly drives the primary flashlight node `/sys/class/leds/led:torch_0` with millivolt/milliamp accuracy from **1 to 500** (bypassing secondary `torch_3` which is capped at 315 mA by kernel device trees, preventing any saturation or collision bugs).
-* **Zero-Flash Startup:** Before requesting `CameraManager.setTorchMode(true)`, TorchElos temporarily detaches the Qualcomm CamX V4L2 triggers (`switch0_trigger`, `torch0_trigger`, `torch3_trigger`). When CamX fires its 65 mA event, it drops into the void, allowing TorchElos to power up the LED **directly at level 1** without any intermediate spike.
-* **Bidirectional Stock Tile Sync:** Intercepts system torch events so that tapping the official LineageOS Quick Settings tile automatically applies your saved custom intensity level.
-* **100% Non-Destructive & Safe:** No files in `/system` or `/vendor` are ever touched. When the torch is off or when opening the Camera app (Aperture, GCam, Leica Cam), standard kernel triggers are automatically restored, ensuring 100% stock photo and video flash calibration.
+* **Direct Hardware DAC Control:** Directly drives the LED current across the full **1 to 500 mA** hardware range, delivering true linear brightness control.
+* **Zero-Flash Soft Startup:** Suppresses the harsh factory ignition pulse, enabling the light to turn on directly at your chosen intensity (such as an ultra-dim level 1 nightlight).
+* **Two-Way Quick Settings Sync:** Seamlessly synchronizes state with the official Android Quick Settings flashlight tile.
+* **100% Non-Destructive & Safe:** Operates entirely in volatile kernel memory (RAM). No system files or vendor partitions are ever modified, and standard camera calibrations are automatically restored when turning off.
 
 ---
 
 ## ✨ Features
 
-- **Ultra-Lightweight & Clean Footprint:**
-  - Optimized with R8 / ProGuard and resource shrinking: APK size is only **~1.9 MB** (smaller than competing generic apps like Flashy).
-- **Fine-Grained 1 to 500 Range:**
-  - `1 / 500` : Ultra-dim nightlight (Veilleuse douce) — will not blind you at night.
-  - `50 / 500` : Eco reading & indoor navigation.
-  - `130 / 500` : Standard balanced flashlight (factory default level).
-  - `500 / 500` : Maximum hardware turbo (Plein phare).
-- **Interactive Controls:**
+- **Ultra-Lightweight Footprint:**
+  - Highly optimized with R8 minification and resource shrinking (~1.9 MB).
+- **Full 1 to 500 Range:**
+  - `1 / 500` : Ultra-soft nightlight — easy on your eyes in complete darkness.
+  - `50 / 500` : Eco illumination for reading and navigation.
+  - `130 / 500` : Standard balanced flashlight (factory default intensity).
+  - `500 / 500` : Maximum hardware turbo.
+- **Intuitive Controls:**
   - Smooth intensity slider.
-  - Direct numeric keypad input (click the level badge to type exact values like `42` or `360`).
-  - Quick Presets: **Nightlight (1)**, **Eco (50)**, **Standard (130)**, **Turbo (500)**.
+  - Direct numeric entry dialog (tap the level badge to enter exact values like `42` or `360`).
+  - One-tap quick presets: **Nightlight (1)**, **Eco (50)**, **Standard (130)**, **Turbo (500)**.
 - **Zero-Friction Launch:**
-  - Starts up instantly without requiring invasive camera runtime permissions.
-- **LineageOS & AOSP Quick Settings Tile:**
-  - Dedicated custom tile (`TorchTileService`) with real-time subtitle feedback (`Nightlight (1/500)`, `Standard (130/500)`, etc.).
-  - Two-way synchronization with the stock flashlight tile.
-- **Dynamic Hardware Diagnostics:**
-  - Real-time detection showing your active root manager (**KernelSU**, **Magisk**, **APatch**), device model, flash PMIC, and ROM.
+  - Launches instantly without requiring camera runtime permissions.
+- **Quick Settings Integration:**
+  - Dedicated custom tile (`TorchTileService`) with real-time level readout.
+  - Synchronized with the stock system flashlight toggle.
+- **Hardware Telemetry & Status:**
+  - Automatic detection of your root solution (**KernelSU**, **Magisk**, **APatch**), device model, flash PMIC, and active ROM.
 
 ---
 
