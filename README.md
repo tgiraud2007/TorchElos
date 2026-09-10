@@ -93,7 +93,7 @@ TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qu
 
 ## 🚀 Installation
 
-1. Download the latest **`TorchElos-v1.2.0-beta.apk`** from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
+1. Download the latest `TorchElos-v*.apk` from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
 2. Install the APK on your device.
 3. Open **TorchElos** and **Grant Superuser / Root permissions** when prompted (by KernelSU, Magisk, or APatch).
 4. *(Optional)* Add the **Torch** tile to your Quick Settings panel.
