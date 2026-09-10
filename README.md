@@ -2,6 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/tgiraud2007/TorchElos/releases/latest"><img src="https://img.shields.io/github/v/release/tgiraud2007/TorchElos?include_prereleases&style=for-the-badge&color=FFA726" alt="Latest Release" /></a>
+  <a href="https://github.com/tgiraud2007/TorchElos/actions/workflows/ci.yml"><img src="https://github.com/tgiraud2007/TorchElos/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://android.com"><img src="https://img.shields.io/badge/Android-13%20to%2016%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android Version" /></a>
   <a href="https://github.com/tgiraud2007/TorchElos"><img src="https://img.shields.io/badge/Device-POCO%20F5%20(marble)-007ACC?style=for-the-badge" alt="Target Device" /></a>
   <a href="https://kernelsu.org"><img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20Magisk%20%7C%20APatch-E53935?style=for-the-badge" alt="Root Solution" /></a>
@@ -13,7 +14,7 @@
 </h3>
 
 <p align="center">
-  <i>Full 1 to 500 Linear Intensity Range, Zero-Flash Nightlight Startup, and Bidirectional LineageOS Quick Settings Synchronization.</i>
+  <i>Full 1 to 500 mA Intensity Range, Zero-Flash Nightlight Startup, and Bidirectional LineageOS Quick Settings Synchronization.</i>
 </p>
 
 ---
@@ -58,7 +59,7 @@ TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qu
 ## ✨ Features
 
 - **Ultra-Lightweight Footprint:**
-  - Highly optimized with R8 minification and resource shrinking (~1.9 MB).
+  - Highly optimized with R8 minification and resource shrinking (~2.0 MB).
 - **Full 1 to 500 Range:**
   - `1 / 500` : Ultra-soft nightlight — easy on your eyes in complete darkness.
   - `50 / 500` : Eco illumination for reading and navigation.
@@ -92,10 +93,13 @@ TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qu
 
 ## 🚀 Installation
 
-1. Download the latest **`TorchElos-v1.1.0-beta.apk`** from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
+1. Download the latest **`TorchElos-v1.2.0-beta.apk`** from the [Releases](https://github.com/tgiraud2007/TorchElos/releases/latest) section.
 2. Install the APK on your device.
 3. Open **TorchElos** and **Grant Superuser / Root permissions** when prompted (by KernelSU, Magisk, or APatch).
 4. *(Optional)* Add the **Torch** tile to your Quick Settings panel.
+
+> [!WARNING]
+> **Upgrading from v1.0.0-beta or v1.1.0-beta:** the release signing key was rotated for security reasons. Android will refuse to install the new version over the old one — uninstall the previous version first, then install v1.2.0-beta.
 
 ---
 
@@ -113,7 +117,32 @@ cd TorchElos
 
 # The generated APK will be located at:
 # app/build/outputs/apk/debug/app-debug.apk
+
+# Run unit tests and lint
+./gradlew testDebugUnitTest lintDebug
 ```
+
+### Release signing
+
+Release builds are signed from a local, git-ignored `keystore.properties` file at the project root:
+
+```properties
+storeFile=app/torchelos-release.jks
+storePassword=********
+keyAlias=torchelos
+keyPassword=********
+```
+
+```bash
+# Generate a new keystore (only if you do not have one)
+keytool -genkeypair -v -keystore app/torchelos-release.jks -storetype PKCS12 \
+  -alias torchelos -keyalg RSA -keysize 4096 -validity 10000
+
+# Build the signed Release APK
+./gradlew assembleRelease
+```
+
+Without `keystore.properties`, release builds are simply left unsigned (debug builds are unaffected).
 
 ---
 
