@@ -1,5 +1,2 @@
-# TorchElos Proguard Rules
-
-# libsu (TopJohnWu)
--keep class com.topjohnwu.superuser.** { *; }
--keepclassmembers class * extends com.topjohnwu.superuser.ipc.RootService { *; }
+# libsu ships its own consumer ProGuard rules inside its AAR.
+# No project-specific rules are required.
