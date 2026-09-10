@@ -21,18 +21,21 @@ object ShellUtils {
     private var rootShell: Shell? = null
 
     @Volatile
-    private var rootAvailability: Boolean? = null
+    private var rootConfirmed = false
 
     fun isRootAvailable(): Boolean {
-        rootAvailability?.let { return it }
+        if (rootConfirmed) return true
+
         val granted = try {
             Shell.isAppGrantedRoot()
         } catch (e: Exception) {
             Log.w(TAG, "Root state check failed", e)
             null
         }
-        val available = granted ?: checkSuBinary()
-        rootAvailability = available
+        val available = granted == true || checkSuBinary()
+        if (available) {
+            rootConfirmed = true
+        }
         return available
     }
 
@@ -49,11 +52,14 @@ object ShellUtils {
     }
 
     fun execSu(command: String): ShellResult {
-        val shell = obtainShell()
+        val shell = obtainRootShell()
         if (shell != null) {
             try {
                 val result = shell.newJob().add(command).exec()
-                return ShellResult(result.isSuccess, result.out.joinToString("\n"))
+                if (result.isSuccess) {
+                    return ShellResult(true, result.out.joinToString("\n"))
+                }
+                Log.w(TAG, "libsu command failed, falling back to direct su")
             } catch (e: Exception) {
                 Log.w(TAG, "libsu execution failed, falling back to direct su", e)
             }
@@ -61,10 +67,17 @@ object ShellUtils {
         return execSuDirect(command)
     }
 
-    private fun obtainShell(): Shell? {
+    private fun obtainRootShell(): Shell? {
         rootShell?.let { return it }
         return try {
-            Shell.getShell().also { rootShell = it }
+            val shell = Shell.getShell()
+            if (shell.isRoot) {
+                rootShell = shell
+                shell
+            } else {
+                Log.w(TAG, "libsu shell is not privileged, using direct su")
+                null
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Unable to obtain root shell", e)
             null

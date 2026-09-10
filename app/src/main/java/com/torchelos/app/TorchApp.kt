@@ -13,7 +13,11 @@ class TorchApp : Application() {
         super.onCreate()
         instance = this
 
-        Shell.setDefaultBuilder(Shell.Builder.create().setTimeout(10))
+        Shell.setDefaultBuilder(
+            Shell.Builder.create()
+                .setFlags(Shell.FLAG_MOUNT_MASTER)
+                .setTimeout(10)
+        )
 
         torchManager = TorchManager(this)
         torchManager.init()
