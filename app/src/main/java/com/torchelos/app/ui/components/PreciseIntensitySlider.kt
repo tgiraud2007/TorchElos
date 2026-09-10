@@ -1,26 +1,70 @@
 package com.torchelos.app.ui.components
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.background
+import androidx.annotation.StringRes
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.torchelos.app.ui.theme.*
+import com.torchelos.app.R
+import com.torchelos.app.ui.theme.DarkSurface
+import com.torchelos.app.ui.theme.DarkSurfaceVariant
+import com.torchelos.app.ui.theme.OnDarkTextPrimary
+import com.torchelos.app.ui.theme.OnDarkTextSecondary
+import com.torchelos.app.ui.theme.TorchAmber
+
+enum class IntensityMode(@StringRes val labelRes: Int) {
+    NIGHTLIGHT(R.string.intensity_nightlight),
+    ECO(R.string.intensity_eco),
+    STANDARD(R.string.intensity_standard),
+    BRIGHT(R.string.intensity_bright),
+    TURBO(R.string.intensity_turbo);
+
+    companion object {
+        fun of(level: Int): IntensityMode = when {
+            level <= 2 -> NIGHTLIGHT
+            level <= 75 -> ECO
+            level <= 175 -> STANDARD
+            level <= 350 -> BRIGHT
+            else -> TURBO
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,15 +78,8 @@ fun PreciseIntensitySlider(
     val view = LocalView.current
     var showEditDialog by remember { mutableStateOf(false) }
 
-    val percentage = (currentLevel * 100f / maxLevel).toInt()
-
-    val modeName = when {
-        currentLevel <= 2 -> "Nightlight"
-        currentLevel <= 75 -> "Eco"
-        currentLevel <= 175 -> "Standard"
-        currentLevel <= 350 -> "Bright"
-        else -> "Turbo"
-    }
+    val percentage = if (maxLevel > 0) currentLevel * 100 / maxLevel else 0
+    val mode = IntensityMode.of(currentLevel)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -57,7 +94,6 @@ fun PreciseIntensitySlider(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Header: Mode info on left, clickable level badge on right
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -65,20 +101,19 @@ fun PreciseIntensitySlider(
             ) {
                 Column {
                     Text(
-                        text = "Brightness",
+                        text = stringResource(R.string.brightness),
                         color = OnDarkTextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = modeName,
+                        text = stringResource(mode.labelRes),
                         color = OnDarkTextPrimary,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                // Clickable badge for direct numeric entry
                 Surface(
                     onClick = { showEditDialog = true },
                     shape = RoundedCornerShape(12.dp),
@@ -98,12 +133,11 @@ fun PreciseIntensitySlider(
                         Text(
                             text = " / $maxLevel",
                             color = OnDarkTextSecondary,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(start = 2.dp)
+                            fontSize = 12.sp
                         )
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit value",
+                            contentDescription = stringResource(R.string.edit_value),
                             tint = OnDarkTextSecondary,
                             modifier = Modifier
                                 .padding(start = 6.dp)
@@ -115,16 +149,15 @@ fun PreciseIntensitySlider(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Smooth high-definition Slider
             Slider(
                 value = currentLevel.toFloat(),
                 onValueChange = { newValue ->
-                    val intVal = newValue.toInt().coerceIn(minLevel, maxLevel)
-                    if (intVal != currentLevel) {
-                        if (intVal % 25 == 0 || intVal == minLevel || intVal == maxLevel) {
+                    val intValue = newValue.toInt().coerceIn(minLevel, maxLevel)
+                    if (intValue != currentLevel) {
+                        if (intValue % 25 == 0 || intValue == minLevel || intValue == maxLevel) {
                             view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                         }
-                        onLevelChanged(intVal)
+                        onLevelChanged(intValue)
                     }
                 },
                 valueRange = minLevel.toFloat()..maxLevel.toFloat(),
@@ -136,7 +169,6 @@ fun PreciseIntensitySlider(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Slider bound markers
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier
@@ -144,18 +176,18 @@ fun PreciseIntensitySlider(
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "1 (Min)",
+                    text = stringResource(R.string.min_level_label, minLevel),
                     color = OnDarkTextSecondary.copy(alpha = 0.6f),
                     fontSize = 11.sp
                 )
                 Text(
-                    text = "$percentage%",
+                    text = stringResource(R.string.percentage, percentage),
                     color = TorchAmber.copy(alpha = 0.8f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "500 (Turbo)",
+                    text = stringResource(R.string.max_level_label, maxLevel),
                     color = OnDarkTextSecondary.copy(alpha = 0.6f),
                     fontSize = 11.sp
                 )
@@ -163,26 +195,30 @@ fun PreciseIntensitySlider(
         }
     }
 
-    // Direct numeric input dialog
     if (showEditDialog) {
         var textInput by remember { mutableStateOf(currentLevel.toString()) }
 
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
             title = {
-                Text("Exact Intensity", color = OnDarkTextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = stringResource(R.string.exact_intensity),
+                    color = OnDarkTextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
             },
             text = {
                 Column {
                     Text(
-                        "Enter value between $minLevel and $maxLevel:",
+                        text = stringResource(R.string.enter_value_between, minLevel, maxLevel),
                         color = OnDarkTextSecondary,
                         fontSize = 13.sp
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = textInput,
-                        onValueChange = { textInput = it.filter { ch -> ch.isDigit() } },
+                        onValueChange = { textInput = it.filter(Char::isDigit) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -197,19 +233,25 @@ fun PreciseIntensitySlider(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val parsed = textInput.toIntOrNull()
-                        if (parsed != null) {
-                            onLevelChanged(parsed.coerceIn(minLevel, maxLevel))
+                        textInput.toIntOrNull()?.let { value ->
+                            onLevelChanged(value.coerceIn(minLevel, maxLevel))
                         }
                         showEditDialog = false
                     }
                 ) {
-                    Text("Apply", color = TorchAmber, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = stringResource(R.string.apply),
+                        color = TorchAmber,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("Cancel", color = OnDarkTextSecondary)
+                    Text(
+                        text = stringResource(R.string.cancel),
+                        color = OnDarkTextSecondary
+                    )
                 }
             },
             containerColor = DarkSurface

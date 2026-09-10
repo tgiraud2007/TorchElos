@@ -1,4 +1,55 @@
 <resources>
     <string name="app_name">TorchElos</string>
-    <string name="tile_name">Flashlight</string>
+    <string name="tile_name">Torch</string>
+
+    <!-- Main screen -->
+    <string name="settings">Settings</string>
+    <string name="status_on_ma">ON • %1$d mA</string>
+    <string name="status_on">ON</string>
+    <string name="status_tap_to_turn_on">TAP TO TURN ON</string>
+    <string name="cd_turn_on">Turn on flashlight</string>
+    <string name="cd_turn_off">Turn off flashlight</string>
+
+    <!-- Intensity controls -->
+    <string name="brightness">Brightness</string>
+    <string name="intensity_nightlight">Nightlight</string>
+    <string name="intensity_eco">Eco</string>
+    <string name="intensity_standard">Standard</string>
+    <string name="intensity_bright">Bright</string>
+    <string name="intensity_turbo">Turbo</string>
+    <string name="min_level_label">%1$d (Min)</string>
+    <string name="max_level_label">%1$d (Turbo)</string>
+    <string name="percentage">%1$d%%</string>
+    <string name="edit_value">Edit value</string>
+    <string name="exact_intensity">Exact Intensity</string>
+    <string name="enter_value_between">Allowed range: %1$d – %2$d</string>
+    <string name="apply">Apply</string>
+    <string name="cancel">Cancel</string>
+    <string name="intensity_unavailable_title">Intensity control unavailable</string>
+    <string name="intensity_unavailable_message">This device does not expose multi-level flashlight control. On POCO F5 (marble), root access via KernelSU, Magisk or APatch is required.</string>
+
+    <!-- Settings & diagnostics -->
+    <string name="settings_hardware_title">Settings &amp; Hardware</string>
+    <string name="back">Back</string>
+    <string name="system_status">System Status</string>
+    <string name="root_access">Root Access</string>
+    <string name="device">Device</string>
+    <string name="flash_driver">Flash Driver</string>
+    <string name="not_detected">Not detected</string>
+    <string name="root_operational">Operational (%1$s)</string>
+    <string name="hardware_test">Hardware Test</string>
+    <string name="ramp_test_title">Brightness Ramp Test</string>
+    <string name="ramp_test_description">Smoothly ramps the flash from Nightlight (1) up to 200 mA to verify the physical LED without blinding your eyes.</string>
+    <string name="run_ramp_test">Run Brightness Test</string>
+    <string name="ramp_test_running">Testing flash…</string>
+    <string name="thermal_notice">Thermal Notice</string>
+    <string name="thermal_notice_text">Turbo level (500) drives 500 mA of continuous current. For daily illumination, levels between 1 and 130 (Standard) provide ideal brightness while staying cool and efficient.</string>
+    <string name="about_version">TorchElos v%1$s</string>
+    <string name="device_rom_format">%1$s • %2$s</string>
+
+    <!-- Quick Settings tile -->
+    <string name="tile_nightlight">Nightlight (%1$d/%2$d)</string>
+    <string name="tile_max">Max (%1$d/%2$d)</string>
+    <string name="tile_level_on">%1$d / %2$d (%3$d%%)</string>
+    <string name="tile_level_off">%1$d / %2$d</string>
 </resources>

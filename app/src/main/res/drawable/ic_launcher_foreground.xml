@@ -9,7 +9,6 @@
         android:scaleY="2.5"
         android:translateX="24"
         android:translateY="24">
-        <!-- Glow circle -->
         <path
             android:fillColor="#FFD54F"
             android:pathData="M18,2H6v6l2,3v11h8V11l2,-3V2zM16,4v1H8V4H16zM14,10.4V20h-4v-9.6L8.27,7h7.46L14,10.4z"/>

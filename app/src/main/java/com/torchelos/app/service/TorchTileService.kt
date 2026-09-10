@@ -1,9 +1,10 @@
 package com.torchelos.app.service
 
-import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import com.torchelos.app.R
 import com.torchelos.app.TorchApp
+import com.torchelos.app.core.PocoSysfsTorchEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,20 +49,20 @@ class TorchTileService : TileService() {
 
     private fun updateTile(isOn: Boolean, level: Int, maxLevel: Int) {
         val tile = qsTile ?: return
-
         tile.state = if (isOn) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.label = "Torch"
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val pct = (level * 100) / maxLevel
-            val desc = when {
-                level <= 2 -> "Nightlight ($level/500)"
-                level >= maxLevel -> "Max (500/500)"
-                else -> "$level / $maxLevel ($pct%)"
-            }
-            tile.subtitle = if (isOn) desc else "$level / $maxLevel"
+        tile.label = getString(R.string.tile_name)
+        tile.subtitle = when {
+            !isOn -> getString(R.string.tile_level_off, level, maxLevel)
+            level <= PocoSysfsTorchEngine.HARDWARE_MIN_LEVEL ->
+                getString(R.string.tile_nightlight, level, maxLevel)
+            level >= maxLevel -> getString(R.string.tile_max, level, maxLevel)
+            else -> getString(
+                R.string.tile_level_on,
+                level,
+                maxLevel,
+                level * 100 / maxLevel
+            )
         }
-
         tile.updateTile()
     }
 }

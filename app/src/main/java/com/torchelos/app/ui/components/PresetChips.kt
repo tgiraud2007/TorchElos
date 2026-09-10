@@ -1,8 +1,15 @@
 package com.torchelos.app.ui.components
 
 import android.view.HapticFeedbackConstants
+import androidx.annotation.StringRes
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -11,14 +18,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.torchelos.app.ui.theme.*
+import com.torchelos.app.R
+import com.torchelos.app.ui.theme.DarkSurface
+import com.torchelos.app.ui.theme.OnDarkTextPrimary
+import com.torchelos.app.ui.theme.TorchAmber
 
-data class TorchPreset(
-    val label: String,
+private data class TorchPreset(
+    @StringRes val labelRes: Int,
     val level: Int
+)
+
+private val PRESETS = listOf(
+    TorchPreset(R.string.intensity_nightlight, 1),
+    TorchPreset(R.string.intensity_eco, 50),
+    TorchPreset(R.string.intensity_standard, 130),
+    TorchPreset(R.string.intensity_turbo, 500)
 )
 
 @Composable
@@ -29,12 +47,6 @@ fun PresetChips(
     modifier: Modifier = Modifier
 ) {
     val view = LocalView.current
-    val presets = listOf(
-        TorchPreset("Nightlight", 1),
-        TorchPreset("Eco", 50),
-        TorchPreset("Standard", 130),
-        TorchPreset("Turbo", 500)
-    )
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -42,13 +54,14 @@ fun PresetChips(
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
     ) {
-        presets.forEach { preset ->
-            val isSelected = currentLevel == preset.level
+        PRESETS.forEach { preset ->
+            val level = preset.level.coerceIn(1, maxLevel)
+            val isSelected = currentLevel == level
 
             Surface(
                 onClick = {
                     view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                    onSelectLevel(preset.level.coerceIn(1, maxLevel))
+                    onSelectLevel(level)
                 },
                 shape = RoundedCornerShape(14.dp),
                 color = if (isSelected) TorchAmber else DarkSurface,
@@ -66,7 +79,7 @@ fun PresetChips(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     Text(
-                        text = preset.label,
+                        text = stringResource(preset.labelRes),
                         color = if (isSelected) Color.Black else OnDarkTextPrimary,
                         fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium

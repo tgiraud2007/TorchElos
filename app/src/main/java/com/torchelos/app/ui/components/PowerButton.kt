@@ -25,7 +25,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.torchelos.app.R
 import com.torchelos.app.ui.theme.DarkSurface
 import com.torchelos.app.ui.theme.DarkSurfaceVariant
 import com.torchelos.app.ui.theme.TorchAmber
@@ -119,7 +121,9 @@ fun PowerButton(
         ) {
             Icon(
                 imageVector = Icons.Default.PowerSettingsNew,
-                contentDescription = if (isOn) "Turn off flashlight" else "Turn on flashlight",
+                contentDescription = stringResource(
+                    if (isOn) R.string.cd_turn_off else R.string.cd_turn_on
+                ),
                 tint = iconColor.value,
                 modifier = Modifier.size(64.dp)
             )
