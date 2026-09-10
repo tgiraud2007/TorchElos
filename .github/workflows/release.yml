@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   release:
     name: Build and publish signed release
@@ -28,6 +32,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Verify tag matches version name
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          if [[ "${GITHUB_REF_NAME#v}" != "$VERSION_NAME" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match versionName ${VERSION_NAME}"
+            exit 1
+          fi
+
       - name: Decode signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -46,6 +58,17 @@ jobs:
       - name: Build signed release APK
         run: ./gradlew testDebugUnitTest assembleRelease
 
+      - name: Verify APK signature
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER=$(find "$SDK_ROOT/build-tools" -name apksigner | sort | tail -1)
+          OUTPUT=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk)
+          echo "$OUTPUT"
+          if ! grep -q "CN=TorchElos" <<< "$OUTPUT"; then
+            echo "Unexpected signing certificate"
+            exit 1
+          fi
+
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk "TorchElos-${GITHUB_REF_NAME}.apk"
 
@@ -53,6 +76,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release delete "${GITHUB_REF_NAME}" --yes
+          fi
           gh release create "${GITHUB_REF_NAME}" "TorchElos-${GITHUB_REF_NAME}.apk" \
             --title "🔦 TorchElos ${GITHUB_REF_NAME}" \
             --generate-notes
