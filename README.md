@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/tgiraud2007/TorchElos/releases/latest"><img src="https://img.shields.io/github/v/release/tgiraud2007/TorchElos?include_prereleases&style=for-the-badge&color=FFA726" alt="Latest Release" /></a>
-  <a href="https://github.com/tgiraud2007/TorchElos/actions/workflows/ci.yml"><img src="https://github.com/tgiraud2007/TorchElos/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/tgiraud2007/TorchElos/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tgiraud2007/TorchElos/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI" alt="CI" /></a>
   <a href="https://android.com"><img src="https://img.shields.io/badge/Android-13%20to%2016%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android Version" /></a>
   <a href="https://github.com/tgiraud2007/TorchElos"><img src="https://img.shields.io/badge/Device-POCO%20F5%20(marble)-007ACC?style=for-the-badge" alt="Target Device" /></a>
   <a href="https://kernelsu.org"><img src="https://img.shields.io/badge/Root-KernelSU%20%7C%20Magisk%20%7C%20APatch-E53935?style=for-the-badge" alt="Root Solution" /></a>
