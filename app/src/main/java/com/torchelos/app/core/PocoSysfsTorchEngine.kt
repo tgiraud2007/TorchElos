@@ -26,10 +26,11 @@ class PocoSysfsTorchEngine : TorchEngine {
             level.coerceIn(MIN_LEVEL, MAX_LEVEL).coerceAtLeast(HARDWARE_MIN_LEVEL)
     }
 
-    override fun isAvailable(): Boolean {
-        if (!ShellUtils.isRootAvailable()) return false
-        return ShellUtils.execSu("test -e $NODE_TORCH_0 && echo OK").output.contains("OK")
-    }
+    override fun isAvailable(): Boolean =
+        ShellUtils.isRootAvailable() && isTorchNodePresent()
+
+    fun isTorchNodePresent(): Boolean =
+        ShellUtils.execSu("test -e $NODE_TORCH_0").isSuccess
 
     override fun getMaxLevel(): Int = MAX_LEVEL
 

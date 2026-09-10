@@ -214,10 +214,10 @@ class TorchManager(private val context: Context) {
 
     private fun detectEnvironment() {
         val rootAvailable = ShellUtils.isRootAvailable()
-        val rootType = if (rootAvailable) ShellUtils.detectRootSolution() else ShellUtils.ROOT_NONE
-        val pocoAvailable = rootAvailable && pocoEngine.isAvailable()
+        val pocoAvailable = rootAvailable && pocoEngine.isTorchNodePresent()
         currentEngine = if (pocoAvailable) pocoEngine else camera2Engine
         if (pocoAvailable) pocoEngine.ensureTriggersRestored()
+        val rootType = if (rootAvailable) ShellUtils.detectRootSolution() else ShellUtils.ROOT_NONE
 
         val storedLevel = prefs.getInt(KEY_LAST_LEVEL, currentEngine.getDefaultLevel())
         _state.update { current ->

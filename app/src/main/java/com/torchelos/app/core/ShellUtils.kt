@@ -26,23 +26,26 @@ object ShellUtils {
     fun isRootAvailable(): Boolean {
         if (rootConfirmed) return true
 
-        val granted = try {
-            Shell.isAppGrantedRoot()
-        } catch (e: Exception) {
-            Log.w(TAG, "Root state check failed", e)
-            null
-        }
-        val available = granted == true || checkSuBinary()
+        val available = libsuRootState() == true || suBinaryRootState()
         if (available) {
             rootConfirmed = true
         }
         return available
     }
 
+    private fun libsuRootState(): Boolean? = try {
+        Shell.isAppGrantedRoot()
+    } catch (e: Exception) {
+        Log.w(TAG, "Root state check failed", e)
+        null
+    }
+
+    private fun suBinaryRootState(): Boolean = checkSuBinary()
+
     fun detectRootSolution(): String {
         if (!isRootAvailable()) return ROOT_NONE
 
-        val version = execSu("su -v 2>/dev/null || su -V 2>/dev/null").output.uppercase()
+        val version = execSu("su -v").output.ifBlank { execSu("su -V").output }.uppercase()
         return when {
             version.contains("KSU") || version.contains("KERNELSU") -> ROOT_KERNELSU
             version.contains("MAGISK") -> ROOT_MAGISK
@@ -96,15 +99,9 @@ object ShellUtils {
     }
 
     private fun detectRootByFiles(): String {
-        if (execSu("test -d /data/adb/ksu && echo KSU").output.contains("KSU")) {
-            return ROOT_KERNELSU
-        }
-        if (execSu("test -f /data/adb/ap/bin/apd && echo APATCH").output.contains("APATCH")) {
-            return ROOT_APATCH
-        }
-        if (execSu("test -d /data/adb/magisk && echo MAGISK").output.contains("MAGISK")) {
-            return ROOT_MAGISK
-        }
+        if (execSu("test -d /data/adb/ksu").isSuccess) return ROOT_KERNELSU
+        if (execSu("test -f /data/adb/ap/bin/apd").isSuccess) return ROOT_APATCH
+        if (execSu("test -d /data/adb/magisk").isSuccess) return ROOT_MAGISK
         return ROOT_GRANTED
     }
 
