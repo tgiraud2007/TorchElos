@@ -22,3 +22,8 @@ local.properties
 app/build/
 build/
 .idea/
+
+# Local documentation & AI context (do not push to public GitHub)
+PROJECT_CONTEXT.md
+AI_CONTEXT.md
+
