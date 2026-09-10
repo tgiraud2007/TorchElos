@@ -14,7 +14,7 @@
 </h3>
 
 <p align="center">
-  <i>Full 1 to 500 mA Intensity Range, Zero-Flash Nightlight Startup, and Bidirectional LineageOS Quick Settings Synchronization.</i>
+  <i>Full 1 to 500 Intensity Range, Zero-Flash Nightlight Startup, and Bidirectional Quick Settings Synchronization.</i>
 </p>
 
 ---
@@ -34,14 +34,14 @@
 > 
 > * **Do NOT run intensity level 500 (100% / Plein phare) continuously for extended periods.**  
 >   At level 500, the dual PMIC LED drivers inject **500 mA** of continuous electrical current into the flash module. This generates significant heat and can cause thermal degradation, reduce LED lifespan, or cause hardware damage to the flash module if left running unattended.
-> * We strongly recommend using **level 500 only for short bursts** when maximum illumination is required. For daily use, levels between **1 and 250** provide more than enough illumination while remaining cool and energy-efficient.
+> * We strongly recommend using **level 500 only for short bursts** when maximum illumination is required. For daily use, levels between **1 and 130** provide more than enough illumination while remaining cool and energy-efficient.
 > * **The author and contributors of TorchElos assume NO responsibility or liability** for any hardware damage, overheated/burnt LED units, battery degradation, software crashes, or any other issues that may occur on your device.
 
 ---
 
 ## 📖 Background
 
-On the POCO F5 and Redmi Note 12 Turbo (Snapdragon 7+ Gen 2), standard Android flashlight apps cannot adjust brightness because the OEM camera HAL does not expose multi-level brightness controls (`FLASH_INFO_STRENGTH_MAXIMUM_LEVEL = 1`). Furthermore, standard system drivers fire an intense factory pulse upon activation, blinding your eyes when all you need is a soft nightlight.
+On the POCO F5 and Redmi Note 12 Turbo (Snapdragon 7+ Gen 2), standard Android flashlight apps cannot adjust brightness because the OEM camera HAL does not expose multi-level brightness controls (`FLASH_INFO_STRENGTH_MAXIMUM_LEVEL = 1`). On top of that, the system driver fires a harsh factory pulse on activation — unpleasant when all you want is a soft nightlight.
 
 ---
 
@@ -49,10 +49,10 @@ On the POCO F5 and Redmi Note 12 Turbo (Snapdragon 7+ Gen 2), standard Android f
 
 TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qualcomm PMIC kernel drivers via root (`sysfs`):
 
-* **Direct Hardware DAC Control:** Directly drives the LED current across the full **1 to 500 mA** hardware range, delivering true linear brightness control.
+* **Direct Hardware Control:** Drives the LED driver across the full **1 to 500** hardware range for fine-grained brightness control.
 * **Zero-Flash Soft Startup:** Suppresses the harsh factory ignition pulse, enabling the light to turn on directly at your chosen intensity (such as an ultra-dim level 1 nightlight).
-* **Two-Way Quick Settings Sync:** Seamlessly synchronizes state with the official Android Quick Settings flashlight tile.
-* **100% Non-Destructive & Safe:** Operates entirely in volatile kernel memory (RAM). No system files or vendor partitions are ever modified, and standard camera calibrations are automatically restored when turning off.
+* **Quick Settings Sync:** Synchronizes state with the system Quick Settings flashlight tile, and applies your saved intensity when the stock tile is used.
+* **Non-Destructive:** No system or vendor partition is ever modified. Changes are volatile (reverted on reboot) and the standard camera flash triggers are automatically restored when turning off.
 
 ---
 
@@ -85,7 +85,7 @@ TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qu
 |---|---|
 | **Target Device** | **POCO F5 (`marble`)** / **Redmi Note 12 Turbo** |
 | **Processor** | Qualcomm Snapdragon 7+ Gen 2 (SM7475) |
-| **Android Version** | **Android 13, 14, 15, 16+** (API 33 - 36) |
+| **Android Version** | **Android 13 to 16+** (API 33+), targetSdk 35 |
 | **ROM Support** | **LineageOS, crDroid, PixelOS, and all AOSP ROMs**, as well as **Stock rooted HyperOS / MIUI** |
 | **Root Solution** | **KernelSU**, **Magisk**, or **APatch** (Required) |
 
@@ -100,6 +100,19 @@ TorchElos bypasses the restricted Camera HAL by interfacing directly with the Qu
 
 > [!WARNING]
 > **Upgrading from v1.0.0-beta or v1.1.0-beta:** the release signing key was rotated for security reasons. Android will refuse to install the new version over the old one — uninstall the previous version first, then install v1.2.0-beta.
+
+---
+
+## 🩺 Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| **"Intensity control unavailable"** | Root access is not granted to TorchElos. Open **KernelSU Next / Magisk / APatch**, allow TorchElos, then reopen the app. |
+| **Camera flash stopped working after a crash** | The CamX triggers may still be disarmed. Reopen TorchElos once (they are restored automatically) or reboot the device. |
+| **The intensity slider is missing** | The app fell back to the standard Camera2 engine (no root, or the device does not expose `led:torch_0`). See the first row. |
+| **Stock flashlight tile behaves differently** | The stock tile goes through the camera service; use the dedicated **Torch** tile for the most reliable behavior. |
+
+Found a bug or an unsupported device? Please open an [issue](https://github.com/tgiraud2007/TorchElos/issues).
 
 ---
 
