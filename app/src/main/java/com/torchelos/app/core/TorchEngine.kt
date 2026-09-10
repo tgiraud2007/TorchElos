@@ -1,7 +1,6 @@
 package com.torchelos.app.core
 
 interface TorchEngine {
-    fun isAvailable(): Boolean
     fun getMaxLevel(): Int
     fun getMinLevel(): Int = 1
     fun getDefaultLevel(): Int

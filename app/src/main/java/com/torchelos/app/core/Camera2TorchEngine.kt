@@ -22,8 +22,6 @@ class Camera2TorchEngine(context: Context) : TorchEngine {
 
     private val flashCamera: FlashCamera? = detectBackFlashCamera()
 
-    override fun isAvailable(): Boolean = flashCamera != null
-
     override fun getMaxLevel(): Int = flashCamera?.maxStrength ?: 1
 
     override fun getDefaultLevel(): Int = flashCamera?.defaultStrength ?: 1

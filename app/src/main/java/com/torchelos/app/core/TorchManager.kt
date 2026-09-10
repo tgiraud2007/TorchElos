@@ -3,6 +3,7 @@ package com.torchelos.app.core
 import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
+import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Build
 import android.os.Handler
@@ -23,8 +24,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 data class TorchState(
+    val isDetecting: Boolean = true,
     val isOn: Boolean = false,
     val level: Int = PocoSysfsTorchEngine.DEFAULT_LEVEL,
     val maxLevel: Int = PocoSysfsTorchEngine.MAX_LEVEL,
@@ -43,8 +46,12 @@ class TorchManager(private val context: Context) {
         private const val TAG = "TorchManager"
         private const val PREFS_NAME = "torchelos_prefs"
         private const val KEY_LAST_LEVEL = "last_level"
-        private const val CAMERA_ID = "0"
+        private const val KEY_MAX_LEVEL = "max_level"
+        private const val KEY_MIN_LEVEL = "min_level"
+        private const val KEY_HARDWARE_CONTROLLED = "hardware_controlled"
         private const val SLIDER_DEBOUNCE_MS = 15L
+        private const val FALLBACK_CAMERA_ID = "0"
+        private const val SYSTEM_PROPERTY_TIMEOUT_SECONDS = 5L
     }
 
     private val prefs: SharedPreferences =
@@ -52,34 +59,39 @@ class TorchManager(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val hardwareMutex = Mutex()
+    private val toggleMutex = Mutex()
+    private val detectionMutex = Mutex()
 
     private val pocoEngine = PocoSysfsTorchEngine()
     private val camera2Engine = Camera2TorchEngine(context)
 
+    @Volatile
     private var currentEngine: TorchEngine = pocoEngine
 
-    private val _state = MutableStateFlow(TorchState())
+    private val _state = MutableStateFlow(initialState())
     val state: StateFlow<TorchState> = _state.asStateFlow()
 
     private val cameraManager by lazy {
         context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     }
 
+    private val flashCameraId: String by lazy { detectFlashCameraId() }
+
     private var sliderDebounceJob: Job? = null
 
     private val torchCallback = object : CameraManager.TorchCallback() {
         override fun onTorchModeChanged(cameraId: String, enabled: Boolean) {
-            if (cameraId != CAMERA_ID) return
+            if (cameraId != flashCameraId) return
             scope.launch {
                 hardwareMutex.withLock {
                     if (enabled == _state.value.isOn) return@withLock
                     if (enabled) {
                         val savedLevel = savedLevel()
                         _state.update { it.copy(isOn = true, level = savedLevel) }
-                        currentEngine.setStrength(savedLevel)
+                        applyExternalTurnOn(savedLevel)
                     } else {
                         _state.update { it.copy(isOn = false) }
-                        currentEngine.turnOff()
+                        applyTurnOff()
                     }
                 }
                 notifyTileUpdate()
@@ -87,11 +99,11 @@ class TorchManager(private val context: Context) {
         }
 
         override fun onTorchModeUnavailable(cameraId: String) {
-            if (cameraId != CAMERA_ID) return
+            if (cameraId != flashCameraId) return
             scope.launch {
                 hardwareMutex.withLock {
                     _state.update { it.copy(isOn = false) }
-                    currentEngine.turnOff()
+                    applyTurnOff()
                 }
                 notifyTileUpdate()
             }
@@ -115,11 +127,14 @@ class TorchManager(private val context: Context) {
 
     fun toggleTorch() {
         scope.launch {
-            if (_state.value.isOn) turnOff() else turnOn()
+            toggleMutex.withLock {
+                if (_state.value.isOn) turnOff() else turnOn()
+            }
         }
     }
 
     suspend fun turnOn(level: Int = _state.value.level) {
+        sliderDebounceJob?.cancel()
         val target = level.coerceIn(currentEngine.getMinLevel(), currentEngine.getMaxLevel())
         saveLevel(target)
         _state.update { it.copy(isOn = true, level = target) }
@@ -147,6 +162,10 @@ class TorchManager(private val context: Context) {
             _state.update { it.copy(isOn = true) }
             notifyTileUpdate()
         }
+    }
+
+    fun requestTurnOff() {
+        scope.launch { turnOff() }
     }
 
     fun setLevel(level: Int) {
@@ -178,7 +197,10 @@ class TorchManager(private val context: Context) {
 
     private fun applyTurnOn(target: Int): Boolean {
         return if (currentEngine is PocoSysfsTorchEngine) {
-            pocoEngine.disarmTriggers()
+            if (!pocoEngine.disarmTriggers()) {
+                Log.w(TAG, "Aborting turn-on: failed to disarm CamX triggers")
+                return false
+            }
             setSystemTorchMode(true)
             pocoEngine.turnOn(target)
         } else {
@@ -186,11 +208,21 @@ class TorchManager(private val context: Context) {
         }
     }
 
+    private fun applyExternalTurnOn(level: Int) {
+        if (currentEngine is PocoSysfsTorchEngine) {
+            pocoEngine.disarmTriggers()
+            pocoEngine.turnOn(level)
+        } else {
+            currentEngine.setStrength(level)
+        }
+    }
+
     private fun applyTurnOff(): Boolean {
         return if (currentEngine is PocoSysfsTorchEngine) {
-            val turnedOff = pocoEngine.turnOff()
+            val switchedOff = pocoEngine.setSwitchEnabled(false)
             setSystemTorchMode(false)
-            turnedOff
+            pocoEngine.restoreTriggers()
+            switchedOff
         } else {
             currentEngine.turnOff()
         }
@@ -198,7 +230,7 @@ class TorchManager(private val context: Context) {
 
     private fun setSystemTorchMode(enabled: Boolean) {
         try {
-            cameraManager.setTorchMode(CAMERA_ID, enabled)
+            cameraManager.setTorchMode(flashCameraId, enabled)
         } catch (e: Exception) {
             Log.w(TAG, "setTorchMode($enabled) failed", e)
         }
@@ -212,17 +244,24 @@ class TorchManager(private val context: Context) {
         }
     }
 
-    private fun detectEnvironment() {
+    private suspend fun detectEnvironment() = detectionMutex.withLock {
         val rootAvailable = ShellUtils.isRootAvailable()
         val pocoAvailable = rootAvailable && pocoEngine.isTorchNodePresent()
         currentEngine = if (pocoAvailable) pocoEngine else camera2Engine
         if (pocoAvailable) pocoEngine.ensureTriggersRestored()
         val rootType = if (rootAvailable) ShellUtils.detectRootSolution() else ShellUtils.ROOT_NONE
 
+        prefs.edit()
+            .putInt(KEY_MAX_LEVEL, currentEngine.getMaxLevel())
+            .putInt(KEY_MIN_LEVEL, currentEngine.getMinLevel())
+            .putBoolean(KEY_HARDWARE_CONTROLLED, pocoAvailable)
+            .apply()
+
         val storedLevel = prefs.getInt(KEY_LAST_LEVEL, currentEngine.getDefaultLevel())
         _state.update { current ->
             val level = if (current.isOn) current.level else storedLevel
             current.copy(
+                isDetecting = false,
                 level = level.coerceIn(currentEngine.getMinLevel(), currentEngine.getMaxLevel()),
                 maxLevel = currentEngine.getMaxLevel(),
                 minLevel = currentEngine.getMinLevel(),
@@ -236,6 +275,25 @@ class TorchManager(private val context: Context) {
         }
     }
 
+    private fun initialState(): TorchState {
+        val cachedMaxLevel = prefs.getInt(KEY_MAX_LEVEL, 0)
+        val hasCache = cachedMaxLevel > 0
+        val maxLevel = if (hasCache) cachedMaxLevel else PocoSysfsTorchEngine.MAX_LEVEL
+        val minLevel = if (hasCache) {
+            prefs.getInt(KEY_MIN_LEVEL, PocoSysfsTorchEngine.MIN_LEVEL)
+        } else {
+            PocoSysfsTorchEngine.MIN_LEVEL
+        }
+        return TorchState(
+            isDetecting = !hasCache,
+            level = prefs.getInt(KEY_LAST_LEVEL, PocoSysfsTorchEngine.DEFAULT_LEVEL)
+                .coerceIn(minLevel, maxLevel),
+            maxLevel = maxLevel,
+            minLevel = minLevel,
+            isHardwareControlled = prefs.getBoolean(KEY_HARDWARE_CONTROLLED, false)
+        )
+    }
+
     private fun savedLevel(): Int =
         prefs.getInt(KEY_LAST_LEVEL, currentEngine.getDefaultLevel())
 
@@ -246,7 +304,11 @@ class TorchManager(private val context: Context) {
     private fun detectDeviceName(): String {
         val model = Build.MODEL.trim()
         val device = Build.DEVICE.trim()
-        return if (model.contains(device, ignoreCase = true)) model else "$model ($device)"
+        return when {
+            model.isEmpty() -> device
+            model.contains(device, ignoreCase = true) -> model
+            else -> "$model ($device)"
+        }
     }
 
     private fun detectFlashHardware(pocoAvailable: Boolean): String = when {
@@ -269,9 +331,27 @@ class TorchManager(private val context: Context) {
         }
     }
 
+    private fun detectFlashCameraId(): String {
+        return try {
+            cameraManager.cameraIdList.firstOrNull { id ->
+                val characteristics = cameraManager.getCameraCharacteristics(id)
+                characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true &&
+                    characteristics.get(CameraCharacteristics.LENS_FACING) ==
+                    CameraCharacteristics.LENS_FACING_BACK
+            } ?: FALLBACK_CAMERA_ID
+        } catch (e: Exception) {
+            Log.w(TAG, "Flash camera detection failed", e)
+            FALLBACK_CAMERA_ID
+        }
+    }
+
     private fun systemProperty(key: String): String = try {
         val process = Runtime.getRuntime().exec(arrayOf("getprop", key))
-        process.inputStream.bufferedReader().use { it.readLine()?.trim().orEmpty() }
+        val value = process.inputStream.bufferedReader().use { it.readLine()?.trim().orEmpty() }
+        if (!process.waitFor(SYSTEM_PROPERTY_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+        }
+        value
     } catch (e: Exception) {
         ""
     }

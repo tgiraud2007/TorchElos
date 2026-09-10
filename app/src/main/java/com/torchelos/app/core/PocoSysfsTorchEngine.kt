@@ -24,13 +24,27 @@ class PocoSysfsTorchEngine : TorchEngine {
 
         fun mapToHardwareLevel(level: Int): Int =
             level.coerceIn(MIN_LEVEL, MAX_LEVEL).coerceAtLeast(HARDWARE_MIN_LEVEL)
+
+        internal fun disarmCommands(): List<String> = listOf(
+            "echo none > $NODE_SWITCH_0_TRIGGER",
+            "echo none > $NODE_TORCH_0_TRIGGER",
+            "echo none > $NODE_TORCH_3_TRIGGER"
+        )
+
+        internal fun turnOnCommands(level: Int): List<String> = listOf(
+            "echo ${mapToHardwareLevel(level)} > $NODE_TORCH_0",
+            "echo 1 > $NODE_SWITCH_0"
+        )
+
+        internal fun switchCommand(enabled: Boolean): String =
+            "echo ${if (enabled) 1 else 0} > $NODE_SWITCH_0"
+
+        internal fun restoreTriggersCommands(): List<String> = listOf(
+            "echo $TRIGGER_SWITCH_0 > $NODE_SWITCH_0_TRIGGER",
+            "echo $TRIGGER_TORCH_0 > $NODE_TORCH_0_TRIGGER",
+            "echo $TRIGGER_TORCH_3 > $NODE_TORCH_3_TRIGGER"
+        )
     }
-
-    override fun isAvailable(): Boolean =
-        ShellUtils.isRootAvailable() && isTorchNodePresent()
-
-    fun isTorchNodePresent(): Boolean =
-        ShellUtils.execSu("test -e $NODE_TORCH_0").isSuccess
 
     override fun getMaxLevel(): Int = MAX_LEVEL
 
@@ -38,35 +52,34 @@ class PocoSysfsTorchEngine : TorchEngine {
 
     override fun getDefaultLevel(): Int = DEFAULT_LEVEL
 
-    fun disarmTriggers(): Boolean {
-        val command = "echo none > $NODE_SWITCH_0_TRIGGER && " +
-            "echo none > $NODE_TORCH_0_TRIGGER && " +
-            "echo none > $NODE_TORCH_3_TRIGGER"
-        return ShellUtils.execSu(command).isSuccess
-    }
+    fun isTorchNodePresent(): Boolean =
+        ShellUtils.execSu("test -e $NODE_TORCH_0").isSuccess
+
+    fun disarmTriggers(): Boolean =
+        ShellUtils.execSuAll(*disarmCommands().toTypedArray())
 
     override fun turnOn(level: Int): Boolean {
-        val hwLevel = mapToHardwareLevel(level)
-        val command = "echo $hwLevel > $NODE_TORCH_0 && echo 1 > $NODE_SWITCH_0"
-        val result = ShellUtils.execSu(command)
-        if (!result.isSuccess) {
-            Log.e(TAG, "turnOn failed: ${result.output}")
+        val success = ShellUtils.execSuAll(*turnOnCommands(level).toTypedArray())
+        if (!success) {
+            Log.e(TAG, "Failed to turn on torch")
         }
-        return result.isSuccess
+        return success
     }
 
-    override fun setStrength(level: Int): Boolean {
-        val hwLevel = mapToHardwareLevel(level)
-        return ShellUtils.execSu("echo $hwLevel > $NODE_TORCH_0").isSuccess
-    }
+    override fun setStrength(level: Int): Boolean =
+        ShellUtils.execSu("echo ${mapToHardwareLevel(level)} > $NODE_TORCH_0").isSuccess
 
     override fun turnOff(): Boolean {
-        val command = "echo 0 > $NODE_SWITCH_0 && " +
-            "echo $TRIGGER_SWITCH_0 > $NODE_SWITCH_0_TRIGGER && " +
-            "echo $TRIGGER_TORCH_0 > $NODE_TORCH_0_TRIGGER && " +
-            "echo $TRIGGER_TORCH_3 > $NODE_TORCH_3_TRIGGER"
-        return ShellUtils.execSu(command).isSuccess
+        val switchedOff = setSwitchEnabled(false)
+        restoreTriggers()
+        return switchedOff
     }
+
+    fun setSwitchEnabled(enabled: Boolean): Boolean =
+        ShellUtils.execSu(switchCommand(enabled)).isSuccess
+
+    fun restoreTriggers(): Boolean =
+        ShellUtils.execSuAll(*restoreTriggersCommands().toTypedArray())
 
     fun ensureTriggersRestored() {
         restoreTriggerIfNeeded(NODE_SWITCH_0_TRIGGER, TRIGGER_SWITCH_0)
@@ -75,7 +88,7 @@ class PocoSysfsTorchEngine : TorchEngine {
     }
 
     private fun restoreTriggerIfNeeded(node: String, trigger: String) {
-        val current = ShellUtils.execSu("cat $node 2>/dev/null")
+        val current = ShellUtils.execSu("cat $node")
         if (current.isSuccess && !current.output.contains("[$trigger]")) {
             Log.w(TAG, "Restoring missing trigger $trigger")
             ShellUtils.execSu("echo $trigger > $node")

@@ -2,6 +2,7 @@ package com.torchelos.app.core
 
 import android.util.Log
 import com.topjohnwu.superuser.Shell
+import java.util.concurrent.TimeUnit
 
 data class ShellResult(
     val isSuccess: Boolean,
@@ -10,6 +11,7 @@ data class ShellResult(
 
 object ShellUtils {
     private const val TAG = "ShellUtils"
+    private const val SU_TIMEOUT_SECONDS = 10L
 
     const val ROOT_NONE = "Not detected"
     const val ROOT_KERNELSU = "KernelSU"
@@ -20,55 +22,38 @@ object ShellUtils {
     @Volatile
     private var rootShell: Shell? = null
 
-    @Volatile
-    private var rootConfirmed = false
-
-    fun isRootAvailable(): Boolean {
-        if (rootConfirmed) return true
-
-        val available = libsuRootState() == true || suBinaryRootState()
-        if (available) {
-            rootConfirmed = true
-        }
-        return available
-    }
-
-    private fun libsuRootState(): Boolean? = try {
-        Shell.isAppGrantedRoot()
-    } catch (e: Exception) {
-        Log.w(TAG, "Root state check failed", e)
-        null
-    }
-
-    private fun suBinaryRootState(): Boolean = checkSuBinary()
+    fun isRootAvailable(): Boolean =
+        libsuRootState() == true || suBinaryRootState()
 
     fun detectRootSolution(): String {
         if (!isRootAvailable()) return ROOT_NONE
 
-        val version = execSu("su -v").output.ifBlank { execSu("su -V").output }.uppercase()
+        val version = execSu("su -v")
+            .takeIf { it.isSuccess && it.output.isNotBlank() }
+            ?.output
+            ?: execSu("su -V").output
+        val normalized = version.uppercase()
         return when {
-            version.contains("KSU") || version.contains("KERNELSU") -> ROOT_KERNELSU
-            version.contains("MAGISK") -> ROOT_MAGISK
-            version.contains("APATCH") -> ROOT_APATCH
+            normalized.contains("KSU") || normalized.contains("KERNELSU") -> ROOT_KERNELSU
+            normalized.contains("MAGISK") -> ROOT_MAGISK
+            normalized.contains("APATCH") -> ROOT_APATCH
             else -> detectRootByFiles()
         }
     }
 
     fun execSu(command: String): ShellResult {
-        val shell = obtainRootShell()
-        if (shell != null) {
-            try {
-                val result = shell.newJob().add(command).exec()
-                if (result.isSuccess) {
-                    return ShellResult(true, result.out.joinToString("\n"))
-                }
-                Log.w(TAG, "libsu command failed, falling back to direct su")
-            } catch (e: Exception) {
-                Log.w(TAG, "libsu execution failed, falling back to direct su", e)
-            }
+        val shell = obtainRootShell() ?: return execSuDirect(command)
+        return try {
+            val result = shell.newJob().add(command).exec()
+            ShellResult(result.isSuccess, result.out.joinToString("\n"))
+        } catch (e: Exception) {
+            Log.w(TAG, "libsu execution failed, falling back to direct su", e)
+            execSuDirect(command)
         }
-        return execSuDirect(command)
     }
+
+    fun execSuAll(vararg commands: String): Boolean =
+        commands.all { execSu(it).isSuccess }
 
     private fun obtainRootShell(): Shell? {
         rootShell?.let { return it }
@@ -87,15 +72,16 @@ object ShellUtils {
         }
     }
 
-    private fun checkSuBinary(): Boolean {
-        return try {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
-            val line = process.inputStream.bufferedReader().use { it.readLine() }
-            process.waitFor()
-            line?.contains("uid=0") == true
-        } catch (e: Exception) {
-            false
-        }
+    private fun libsuRootState(): Boolean? = try {
+        Shell.isAppGrantedRoot()
+    } catch (e: Exception) {
+        Log.w(TAG, "Root state check failed", e)
+        null
+    }
+
+    private fun suBinaryRootState(): Boolean {
+        val result = runSuCommand("id")
+        return result.isSuccess && result.output.contains("uid=0")
     }
 
     private fun detectRootByFiles(): String {
@@ -105,16 +91,35 @@ object ShellUtils {
         return ROOT_GRANTED
     }
 
-    private fun execSuDirect(command: String): ShellResult {
+    private fun execSuDirect(command: String): ShellResult = runSuCommand(command)
+
+    private fun runSuCommand(command: String): ShellResult {
+        var process: Process? = null
         return try {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
-            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
-            val error = process.errorStream.bufferedReader().use { it.readText() }.trim()
-            val exitCode = process.waitFor()
-            val success = exitCode == 0
-            ShellResult(success, if (success) output else error.ifEmpty { output })
+            process = ProcessBuilder("su", "-c", command)
+                .redirectErrorStream(true)
+                .start()
+
+            val output = StringBuilder()
+            val reader = Thread {
+                try {
+                    process.inputStream.bufferedReader().use { output.append(it.readText()) }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to read su output", e)
+                }
+            }
+            reader.start()
+
+            if (!process.waitFor(SU_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                reader.interrupt()
+                return ShellResult(false, "su command timed out")
+            }
+            reader.join(1000)
+            ShellResult(process.exitValue() == 0, output.toString().trim())
         } catch (e: Exception) {
             Log.e(TAG, "Direct su execution failed: $command", e)
+            process?.destroyForcibly()
             ShellResult(false, e.message.orEmpty())
         }
     }
